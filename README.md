@@ -2,7 +2,7 @@
 
 Recall is an on-call incident resolution workspace that helps engineers find previously solved incidents and reuse code-backed fixes faster.
 
-> Built with Claude + Codex.
+> Built with &#10084; using Claude + Codex.
 
 ## What We Are Trying To Build
 
