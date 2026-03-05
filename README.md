@@ -14,6 +14,12 @@ We are building a practical incident assistant for engineering teams under press
 - Show evidence so engineers can trust recommendations
 - Improve quality continuously using feedback
 
+## Contributors
+
+- **kushalsharma1218** — Founder, product owner, and core builder
+- **Claude** — AI build partner (ideation, iteration quality, engineering direction)
+- **Codex (GPT-5)** — Implementation partner (architecture, coding, and technical reviews)
+
 ## Why Recall
 
 On-call teams repeatedly solve similar production problems. Valuable fix context often exists in old tasks/PRs but is difficult to find quickly. Recall reduces that search and triage time by turning prior resolutions into an operational recommendation workflow.
