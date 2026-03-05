@@ -12,6 +12,8 @@ recall:
     request-timeout-ms: 12000
     health-timeout-ms: 5000
     fallback-enabled: true
+    legacy-failure-threshold: 3
+    legacy-cooldown-ms: 15000
     allowed-origins:
       - "http://localhost:*"
       - "http://127.0.0.1:*"

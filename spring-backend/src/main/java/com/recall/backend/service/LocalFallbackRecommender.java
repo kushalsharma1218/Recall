@@ -61,6 +61,23 @@ public class LocalFallbackRecommender {
 
     private final ConcurrentHashMap<String, VoteCounter> feedback = new ConcurrentHashMap<>();
 
+    public Map<String, Object> health() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("engine", "spring-local-hybrid");
+        out.put("tickets_loaded", 0);
+        out.put("ollama_reachable", false);
+        out.put("feedback_tracked", feedback.size());
+        return out;
+    }
+
+    public Map<String, Object> reload() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("reloaded_at", Instant.now().toString());
+        out.put("feedback_tracked", feedback.size());
+        return out;
+    }
+
     public RecommendResponse recommend(RecommendRequest request) {
         RecommendResponse response = new RecommendResponse();
         response.engine = "spring-local-hybrid";

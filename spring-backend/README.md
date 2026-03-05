@@ -63,6 +63,7 @@ Configured via `application.yml` (`recall.backend`):
 - `mode: local` (default and recommended)
 - `mode: proxy` (legacy bridge mode; optional compatibility path)
 - `fallback-enabled: true`
+- `legacy-failure-threshold` and `legacy-cooldown-ms` for circuit-breaker behavior
 
 Default port:
 
@@ -92,6 +93,14 @@ Included tests validate:
 
 - Correct patch recommendation from similar incidents
 - Proper abstain behavior when no valid mapped evidence exists
+- Circuit-breaker open/close behavior
+- Proxy failure fallback to local strategy
+
+## Design Patterns Used
+
+- **Strategy pattern**: `RecommendationGateway` interface with `LocalRecommendationGateway` and `ProxyRecommendationGateway`
+- **Circuit Breaker pattern**: `LegacyCircuitBreaker` avoids repeated calls to unhealthy proxy backend
+- **Controller Advice pattern**: centralized API exception handling via `ApiExceptionHandler`
 
 ## Configuration File
 

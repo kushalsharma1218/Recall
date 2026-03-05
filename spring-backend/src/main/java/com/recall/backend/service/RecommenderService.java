@@ -10,23 +10,29 @@ import com.recall.backend.model.FeedbackRequest;
 import com.recall.backend.model.FeedbackResponse;
 import com.recall.backend.model.RecommendRequest;
 import com.recall.backend.model.RecommendResponse;
+import com.recall.backend.service.gateway.LocalRecommendationGateway;
+import com.recall.backend.service.gateway.ProxyRecommendationGateway;
+import com.recall.backend.service.resilience.LegacyCircuitBreaker;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RecommenderService {
 
     private final BackendProperties properties;
-    private final LegacyBackendClient legacyBackendClient;
-    private final LocalFallbackRecommender localFallbackRecommender;
+    private final ProxyRecommendationGateway proxyGateway;
+    private final LocalRecommendationGateway localGateway;
+    private final LegacyCircuitBreaker legacyCircuitBreaker;
 
     public RecommenderService(
         BackendProperties properties,
-        LegacyBackendClient legacyBackendClient,
-        LocalFallbackRecommender localFallbackRecommender
+        ProxyRecommendationGateway proxyGateway,
+        LocalRecommendationGateway localGateway,
+        LegacyCircuitBreaker legacyCircuitBreaker
     ) {
         this.properties = properties;
-        this.legacyBackendClient = legacyBackendClient;
-        this.localFallbackRecommender = localFallbackRecommender;
+        this.proxyGateway = proxyGateway;
+        this.localGateway = localGateway;
+        this.legacyCircuitBreaker = legacyCircuitBreaker;
     }
 
     public Map<String, Object> health() {
@@ -36,22 +42,33 @@ public class RecommenderService {
         out.put("mode", properties.getMode().name().toLowerCase());
         out.put("legacy_configured", !String.valueOf(properties.getLegacyBaseUrl()).trim().isBlank());
         out.put("legacy_host", safeHost(properties.getLegacyBaseUrl()));
+        out.put("fallback_enabled", properties.isFallbackEnabled());
+        out.put("legacy_circuit", legacyCircuitBreaker.state());
 
         if (properties.getMode() == BackendProperties.Mode.LOCAL) {
             out.put("legacy_ok", false);
-            out.put("tickets_loaded", 0);
-            out.put("ollama_reachable", false);
-            out.put("fallback_enabled", properties.isFallbackEnabled());
+            out.putAll(localGateway.health());
+            return out;
+        }
+
+        if (!legacyCircuitBreaker.allowRequest()) {
+            out.put("legacy_ok", false);
+            out.put("warning", "Legacy backend circuit open");
+            Map<String, Object> localHealth = localGateway.health();
+            out.put("tickets_loaded", asInt(localHealth.get("tickets_loaded"), 0));
+            out.put("ollama_reachable", asBoolean(localHealth.get("ollama_reachable"), false));
             return out;
         }
 
         try {
-            Map<String, Object> legacy = legacyBackendClient.health();
+            Map<String, Object> legacy = proxyGateway.health();
+            legacyCircuitBreaker.recordSuccess();
             out.put("legacy_ok", true);
             out.put("tickets_loaded", asInt(legacy.get("tickets_loaded"), 0));
             out.put("ollama_reachable", asBoolean(legacy.get("ollama_reachable"), false));
             out.put("legacy_engine", String.valueOf(legacy.getOrDefault("engine", "unknown")));
         } catch (RuntimeException ex) {
+            legacyCircuitBreaker.recordFailure();
             out.put("legacy_ok", false);
             out.put("tickets_loaded", 0);
             out.put("ollama_reachable", false);
@@ -63,19 +80,26 @@ public class RecommenderService {
 
     public RecommendResponse recommend(RecommendRequest request) {
         if (properties.getMode() == BackendProperties.Mode.LOCAL) {
-            return localFallbackRecommender.recommend(request);
+            return localGateway.recommend(request);
+        }
+
+        if (!legacyCircuitBreaker.allowRequest()) {
+            if (!properties.isFallbackEnabled()) {
+                throw new IllegalStateException("Legacy backend temporarily unavailable (circuit open)");
+            }
+            return fallbackRecommend(request, "legacy_circuit_open");
         }
 
         try {
-            return legacyBackendClient.recommend(request);
+            RecommendResponse response = proxyGateway.recommend(request);
+            legacyCircuitBreaker.recordSuccess();
+            return response;
         } catch (RuntimeException ex) {
+            legacyCircuitBreaker.recordFailure();
             if (!properties.isFallbackEnabled()) {
                 throw ex;
             }
-            RecommendResponse fallback = localFallbackRecommender.recommend(request);
-            fallback.debug.put("bridge_fallback", true);
-            fallback.debug.put("bridge_error", "legacy_unavailable");
-            return fallback;
+            return fallbackRecommend(request, "legacy_unavailable");
         }
     }
 
@@ -86,16 +110,26 @@ public class RecommenderService {
         }
 
         if (properties.getMode() == BackendProperties.Mode.LOCAL) {
-            return localFeedback(request.patchId, vote);
+            return localGateway.feedback(request);
+        }
+
+        if (!legacyCircuitBreaker.allowRequest()) {
+            if (!properties.isFallbackEnabled()) {
+                throw new IllegalStateException("Legacy backend temporarily unavailable (circuit open)");
+            }
+            return localGateway.feedback(request);
         }
 
         try {
-            return legacyBackendClient.feedback(request);
+            FeedbackResponse response = proxyGateway.feedback(request);
+            legacyCircuitBreaker.recordSuccess();
+            return response;
         } catch (RuntimeException ex) {
+            legacyCircuitBreaker.recordFailure();
             if (!properties.isFallbackEnabled()) {
                 throw ex;
             }
-            return localFeedback(request.patchId, vote);
+            return localGateway.feedback(request);
         }
     }
 
@@ -103,31 +137,37 @@ public class RecommenderService {
         Map<String, Object> out = new LinkedHashMap<>();
 
         if (properties.getMode() == BackendProperties.Mode.LOCAL) {
-            out.put("ok", true);
+            out.putAll(localGateway.reload());
             out.put("mode", "local");
-            out.put("reloaded_at", Instant.now().toString());
+            return out;
+        }
+
+        if (!legacyCircuitBreaker.allowRequest()) {
+            if (!properties.isFallbackEnabled()) {
+                throw new IllegalStateException("Legacy backend temporarily unavailable (circuit open)");
+            }
+            out.putAll(localGateway.reload());
+            out.put("mode", "local-fallback");
+            out.put("warning", "Legacy reload skipped: circuit open");
             return out;
         }
 
         try {
-            Map<String, Object> legacy = legacyBackendClient.reload();
+            Map<String, Object> legacy = proxyGateway.reload();
+            legacyCircuitBreaker.recordSuccess();
             out.putAll(legacy);
             out.put("mode", "proxy");
             return out;
         } catch (RuntimeException ex) {
+            legacyCircuitBreaker.recordFailure();
             if (!properties.isFallbackEnabled()) {
                 throw ex;
             }
-            out.put("ok", true);
+            out.putAll(localGateway.reload());
             out.put("mode", "local-fallback");
             out.put("warning", "Legacy reload unavailable");
-            out.put("reloaded_at", Instant.now().toString());
             return out;
         }
-    }
-
-    private FeedbackResponse localFeedback(String patchId, String vote) {
-        return localFallbackRecommender.recordFeedback(patchId, vote);
     }
 
     private int asInt(Object value, int defaultVal) {
@@ -161,6 +201,17 @@ public class RecommenderService {
         } catch (RuntimeException ex) {
             return "";
         }
+    }
+
+    private RecommendResponse fallbackRecommend(RecommendRequest request, String reason) {
+        RecommendResponse fallback = localGateway.recommend(request);
+        if (fallback.debug == null) fallback.debug = new LinkedHashMap<>();
+        fallback.debug.put("bridge_fallback", true);
+        fallback.debug.put("bridge_error", reason);
+        fallback.debug.put("circuit_open", legacyCircuitBreaker.isOpen());
+        fallback.debug.put("circuit_failure_count", legacyCircuitBreaker.failureCount());
+        fallback.debug.put("fallback_at", Instant.now().toString());
+        return fallback;
     }
 
 }
