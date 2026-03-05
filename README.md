@@ -2,6 +2,8 @@
 
 Recall is an on-call incident resolution workspace that helps engineers find previously solved incidents and reuse code-backed fixes faster.
 
+> Built with Claude + Codex.
+
 ## What We Are Trying To Build
 
 We are building a practical incident assistant for engineering teams under pressure:
