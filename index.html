@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="Recall — Local-first incident code resolution assistant with optional Azure DevOps and Jira sync." />
+  <title>Recall — Incident Code Resolution</title>
+  <link rel="icon" type="image/svg+xml" href="assets/recall-symbol.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="landing-active">
+  <section id="org-onboarding-panel" class="landing-page org-onboarding-panel" aria-label="Recall landing page">
+    <div class="landing-shell">
+      <header class="landing-header">
+        <a class="landing-brand" href="index.html" aria-label="Recall landing page">
+          <span class="landing-brand-mark" aria-hidden="true">
+            <img src="assets/recall-symbol.svg" alt="" />
+          </span>
+          <span class="landing-brand-text">Recall</span>
+        </a>
+        <nav class="landing-nav" aria-label="Landing navigation">
+          <a href="#landing-about">About</a>
+          <a href="#landing-how">How To Use</a>
+          <a href="#landing-metrics">Metrics</a>
+          <a href="#landing-contact">Contact</a>
+          <a href="#landing-contributors">Contributors</a>
+        </nav>
+      </header>
+
+      <div class="org-onboarding-shell">
+        <div class="org-onboarding-kicker">Recall Landing Page</div>
+        <h2 class="org-hero-title">Welcome to <span>Recall</span></h2>
+        <p>
+          AI-powered incident code resolution with local-first intelligence. Integrate your organization to sync real tickets and train Recall on resolved fixes.
+        </p>
+        <div class="org-onboarding-actions">
+          <button id="org-onboarding-open-settings-btn" type="button" class="btn btn-primary">
+            Integrate Organization
+          </button>
+        </div>
+      </div>
+
+      <div id="landing-about" class="landing-about-stack" aria-label="Recall overview">
+        <section class="about-section">
+          <div class="about-section-head">
+            <div class="info-kicker">What Recall Does</div>
+            <h2>Code-Level Incident Recommendations</h2>
+            <p>
+              Recall learns from resolved incidents and the code changes that fixed them. It retrieves similar cases and recommends ranked, evidence-backed fixes.
+            </p>
+          </div>
+          <div class="about-hero-layout">
+            <div>
+              <div class="about-pill-row">
+                <span class="about-pill">Hybrid retrieval</span>
+                <span class="about-pill">Patch evidence</span>
+                <span class="about-pill">Confidence aware</span>
+                <span class="about-pill">Local-first</span>
+              </div>
+            </div>
+            <figure class="about-figure">
+              <img src="assets/about-recall-flow.svg" alt="Recall workflow from incident intake to validated fix recommendations" />
+            </figure>
+          </div>
+        </section>
+
+        <section class="about-section">
+          <div class="about-section-head">
+            <div class="info-kicker">Why Recall</div>
+            <h2>Why Teams Need It</h2>
+          </div>
+          <div class="info-grid about-why-grid">
+            <article class="info-card">
+              <h3>Reduce Repeated Investigation</h3>
+              <p>On-call engineers stop re-solving the same issue and can reuse proven fixes quickly.</p>
+            </article>
+            <article class="info-card">
+              <h3>Higher Confidence Under Pressure</h3>
+              <p>Recommendations include matched incident evidence, not only generic LLM output.</p>
+            </article>
+            <article class="info-card">
+              <h3>Practical For Production</h3>
+              <p>Organization integration is explicit and controlled. Data remains local-first by default.</p>
+            </article>
+            <article class="info-card">
+              <h3>Improves Over Time</h3>
+              <p>Feedback and training corpus growth continuously improve ranking quality.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="landing-how" class="about-section about-section--key">
+          <div class="about-section-head">
+            <div class="info-kicker">How To Use Recall</div>
+            <h2>Most Important Flow</h2>
+            <p>
+              Integrate once, train with resolved tasks, then use Recall during live incidents.
+            </p>
+          </div>
+          <div class="about-steps">
+            <article class="about-step">
+              <span class="about-step-num">1</span>
+              <div>
+                <h3>Integrate Organization</h3>
+                <p>Open Control Center and save an Azure DevOps or Jira profile.</p>
+              </div>
+            </article>
+            <article class="about-step">
+              <span class="about-step-num">2</span>
+              <div>
+                <h3>Sync + Train</h3>
+                <p>Bring in resolved tasks and train Recall with useful code-level fix context.</p>
+              </div>
+            </article>
+            <article class="about-step">
+              <span class="about-step-num">3</span>
+              <div>
+                <h3>Submit Incident</h3>
+                <p>Enter issue details and signals (error code, system, severity, tags).</p>
+              </div>
+            </article>
+            <article class="about-step">
+              <span class="about-step-num">4</span>
+              <div>
+                <h3>Apply Recommended Fix</h3>
+                <p>Review ranked suggestions, use evidence, apply safely, and give feedback.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="about-section">
+          <div class="about-section-head">
+            <div class="info-kicker">Under The Hood</div>
+            <h2>Technology Inside Recall</h2>
+            <p>
+              Hybrid retrieval combines lexical match, embeddings, and structured signals so recommendations are specific and explainable.
+            </p>
+          </div>
+          <div class="about-tech-layout">
+            <figure class="about-figure">
+              <img src="assets/about-tech-stack.svg" alt="Recall recommendation architecture layers" />
+            </figure>
+            <div class="about-tech-list">
+              <div class="about-tech-item"><strong>Frontend:</strong> JavaScript workspace with local-first state.</div>
+              <div class="about-tech-item"><strong>Integrations:</strong> Azure DevOps and Jira profile-based intake.</div>
+              <div class="about-tech-item"><strong>Retrieval:</strong> BM25 + semantic + signal overlap.</div>
+              <div class="about-tech-item"><strong>Embeddings:</strong> Ollama local models for semantic recall.</div>
+              <div class="about-tech-item"><strong>Ranking:</strong> Weighted scoring with confidence-aware fallback.</div>
+              <div class="about-tech-item"><strong>Output:</strong> Ranked fixes with similar-incident evidence.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="landing-metrics" class="about-section about-section--key landing-metrics">
+          <div class="about-section-head">
+            <div class="info-kicker">Performance Snapshot</div>
+            <h2>Recommendation Quality Indicators</h2>
+            <p>
+              Projected benchmark indicators for product demo and positioning. These are illustrative targets until full benchmark runs are published.
+            </p>
+          </div>
+          <div class="landing-metrics-grid">
+            <article class="landing-metric-card" style="--metric: 92%;">
+              <div class="landing-metric-top">
+                <div class="landing-metric-label">Recommendation Precision</div>
+                <div class="landing-metric-value">92%</div>
+              </div>
+              <div class="landing-metric-track"><span class="landing-metric-fill"></span></div>
+              <div class="landing-metric-note">Estimated top-1 fix precision on mature trained corpus.</div>
+            </article>
+            <article class="landing-metric-card" style="--metric: 96%;">
+              <div class="landing-metric-top">
+                <div class="landing-metric-label">Top-3 Match Coverage</div>
+                <div class="landing-metric-value">96%</div>
+              </div>
+              <div class="landing-metric-track"><span class="landing-metric-fill"></span></div>
+              <div class="landing-metric-note">Expected recall when reviewing the first three suggestions.</div>
+            </article>
+            <article class="landing-metric-card" style="--metric: 89%;">
+              <div class="landing-metric-top">
+                <div class="landing-metric-label">Confidence Calibration</div>
+                <div class="landing-metric-value">89%</div>
+              </div>
+              <div class="landing-metric-track"><span class="landing-metric-fill"></span></div>
+              <div class="landing-metric-note">How reliably confidence aligns with true recommendation quality.</div>
+            </article>
+            <article class="landing-metric-card" style="--metric: 57%;">
+              <div class="landing-metric-top">
+                <div class="landing-metric-label">Triage Time Reduction</div>
+                <div class="landing-metric-value">57%</div>
+              </div>
+              <div class="landing-metric-track"><span class="landing-metric-fill"></span></div>
+              <div class="landing-metric-note">Projected reduction in initial incident analysis effort.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="landing-contact" class="about-section">
+          <div class="about-section-head">
+            <div class="info-kicker">Contact</div>
+            <h2>Reach The Recall Team</h2>
+            <p>
+              For onboarding, integration setup, or recommendation quality feedback, use these channels.
+            </p>
+          </div>
+          <div class="contact-list">
+            <div class="contact-item">
+              <strong>Support Email</strong>
+              <a href="mailto:recall-support@company.com">recall-support@company.com</a>
+            </div>
+            <div class="contact-item">
+              <strong>Engineering Channel</strong>
+              <span>#recall-engineering</span>
+            </div>
+            <div class="contact-item">
+              <strong>On-call Escalation</strong>
+              <span>#recall-oncall-escalation</span>
+            </div>
+            <div class="contact-item">
+              <strong>Feedback Template</strong>
+              <span>Share incident ID, chosen patch, expected fix, and actual outcome/mismatch.</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="landing-contributors" class="about-section">
+          <div class="about-section-head">
+            <div class="info-kicker">Contributors</div>
+            <h2>Who Is Building Recall</h2>
+            <p>
+              Contributors include you and everyone who has written code or provided domain input for Recall.
+            </p>
+          </div>
+          <div class="contributors-grid">
+            <article class="contributor-card">
+              <div class="contributor-name">You · Kushal Sharma</div>
+              <div class="contributor-role">Founder · Product Owner · Core Builder</div>
+              <div class="contributor-note">Leads product direction, requirements, and contributes directly to app code and decisions.</div>
+            </article>
+            <article class="contributor-card">
+              <div class="contributor-name">Codex (GPT-5)</div>
+              <div class="contributor-role">Implementation Partner</div>
+              <div class="contributor-note">Supports architecture, code implementation, UI/UX iterations, and technical reviews.</div>
+            </article>
+            <article class="contributor-card">
+              <div class="contributor-name">All Code Contributors</div>
+              <div class="contributor-role">Engineers Who Wrote Code</div>
+              <div class="contributor-note">Includes every engineer/collaborator who has authored or modified source code in this project workspace.</div>
+            </article>
+            <article class="contributor-card">
+              <div class="contributor-name">On-call Engineering Partners</div>
+              <div class="contributor-role">Domain Validation</div>
+              <div class="contributor-note">Share incident patterns and fix outcomes so recommendations stay practical and production-ready.</div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <div class="app-wrapper">
+
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+      <a id="brand-home-link" class="header-brand" href="index.html" aria-label="Recall home">
+        <div class="header-logo" aria-hidden="true">
+          <img src="assets/recall-symbol.svg" alt="" />
+        </div>
+        <div class="brand-text">
+          <h1>Recall</h1>
+          <span>Incident Code Resolution</span>
+        </div>
+      </a>
+      <div class="header-status">
+        <span id="engine-indicator" class="engine-indicator engine-indicator--tfidf">Hybrid</span>
+        <span id="ticket-source-indicator" class="engine-indicator engine-indicator--warn">Local Corpus</span>
+        <button id="settings-btn" class="settings-btn" title="Open control center"
+          aria-label="Open control center" aria-haspopup="menu" aria-expanded="false"
+          aria-controls="quick-settings-menu">
+          <span class="settings-btn-icon" aria-hidden="true">⚙</span>
+          <span class="settings-btn-label">Control</span>
+          <span class="settings-btn-caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="quick-settings-menu" class="quick-settings-menu" role="menu" aria-label="Quick settings">
+          <div class="quick-settings-head">
+            <div class="quick-settings-kicker">Control Center</div>
+            <div id="quick-engine-mode" class="quick-mode-chip">Hybrid Local</div>
+          </div>
+          <div class="quick-settings-section">
+            <div class="quick-settings-title">Model</div>
+            <select id="quick-llm-model" class="form-control quick-settings-select"></select>
+            <div id="quick-model-meta" class="quick-model-meta">Select the active local LLM model.</div>
+            <div class="quick-settings-actions">
+              <button id="quick-refresh-models-btn" type="button" class="btn btn-secondary quick-settings-btn">Refresh Models</button>
+              <button id="quick-open-settings-btn" type="button" class="btn btn-primary quick-settings-btn">Open Full Settings</button>
+            </div>
+          </div>
+          <div class="quick-settings-section">
+            <div class="quick-settings-title">Account</div>
+            <div class="quick-account-card">
+              <div id="quick-account-name" class="quick-account-name">No active profile</div>
+              <div id="quick-account-scope" class="quick-account-scope">No workspace connected</div>
+              <div id="quick-account-meta" class="quick-account-meta">Connect Azure DevOps or Jira profile in settings.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── STATS BAR ── -->
+    <div class="stats-bar" role="status" aria-label="System statistics">
+      <div class="stat-item">
+        <span class="stat-value" id="stat-total">0</span>
+        <span class="stat-label">Incidents</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-userqueue">0</span>
+        <span class="stat-label">Open</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-trained" style="color:var(--success)">0</span>
+        <span class="stat-label">Code-Trained</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-patchcount" style="color:var(--info)">0</span>
+        <span class="stat-label">Patterns</span>
+      </div>
+    </div>
+
+    <!-- ── NAVIGATION ── -->
+    <nav class="app-nav" role="navigation" aria-label="Main navigation">
+      <button class="nav-item active" data-tab="submit" id="nav-submit" aria-label="Submit ticket">
+        Intake
+      </button>
+      <button class="nav-item" data-tab="results" id="nav-results" aria-label="View recommendations">
+        Recommendations
+      </button>
+      <button class="nav-item" data-tab="history" id="nav-history" aria-label="Ticket history">
+        History
+      </button>
+      <button class="nav-item" data-tab="analytics" id="nav-analytics" aria-label="Analytics">
+        Analytics
+      </button>
+      <button class="nav-item" data-tab="train" id="nav-train" aria-label="Train AI">
+        Training
+      </button>
+    </nav>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="app-main" role="main">
+
+      <!-- ════════════════════════════════════
+         TAB 1 — SUBMIT TICKET
+    ════════════════════════════════════ -->
+      <div class="tab-panel active" id="tab-submit">
+
+        <div class="section-header">
+          <h2 class="section-title">Incident Intake</h2>
+          <p class="section-sub">Describe the issue and retrieve code-backed recommendations from previously resolved work.</p>
+        </div>
+
+        <!-- Import from ADO -->
+        <div class="card" style="margin-bottom:1.25rem;padding:1.25rem">
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem">
+            <strong style="color:var(--text-primary);font-size:0.92rem">Import from Azure DevOps</strong>
+            <span style="font-size:0.78rem;color:var(--text-muted)">Enter a ticket ID and we will fetch, analyze, and
+              suggest patches automatically</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.4fr auto;gap:1rem;align-items:end">
+            <div class="form-group" style="margin:0">
+              <label class="form-label" for="submit-ado-profile" style="font-size:0.72rem">Integration Profile</label>
+              <select id="submit-ado-profile" class="form-control"
+                style="padding:0.6rem 0.8rem;font-size:0.85rem"></select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label" for="submit-ado-id" style="font-size:0.72rem">Work Item ID or URL <span
+                  class="required">*</span></label>
+              <input id="submit-ado-id" type="text" class="form-control" style="padding:0.6rem 0.8rem;font-size:0.85rem"
+                placeholder="e.g. 293553 or full ADO URL" autocomplete="off" />
+            </div>
+            <button type="button" class="btn btn-primary" id="submit-ado-fetch-btn"
+              style="padding:0.6rem 1.5rem;font-size:0.88rem;white-space:nowrap">
+              Fetch and Analyze
+            </button>
+          </div>
+          <div id="submit-ado-status" style="margin-top:0.6rem;font-size:0.82rem;min-height:1.2rem"></div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="card">
+          <form id="ticket-form" novalidate>
+            <div class="ticket-form-grid">
+
+              <!-- Title -->
+              <div class="form-group">
+                <label class="form-label" for="title">
+                  Ticket Title <span class="required">*</span>
+                </label>
+                <input id="title" type="text" class="form-control"
+                  placeholder="e.g. SQL Server deadlock causing production outage" autocomplete="off" maxlength="200" />
+                <span class="field-error" id="title-error" role="alert"></span>
+              </div>
+
+              <!-- Description -->
+              <div class="form-group">
+                <label class="form-label" for="description">
+                  Issue Description <span class="required">*</span>
+                  <span class="char-hint"><span id="char-count">0</span> chars</span>
+                </label>
+                <textarea id="description" class="form-control"
+                  placeholder="Describe the database issue in detail — include error codes, symptoms, affected systems, timing, workload type, and any recent changes. More detail = better patch match."
+                  rows="6"></textarea>
+                <span class="field-error" id="desc-error" role="alert"></span>
+              </div>
+
+              <!-- Severity + System -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="severity">
+                    Severity <span class="required">*</span>
+                  </label>
+                  <select id="severity" class="form-control">
+                    <option value="">— Select severity —</option>
+                    <option value="critical">Critical — Production down, data loss risk</option>
+                    <option value="high">High — Major impact, degraded performance</option>
+                    <option value="medium">Medium — Partial impact, workaround exists</option>
+                    <option value="low">Low — Minor issue, cosmetic/informational</option>
+                  </select>
+                  <span class="field-error" id="severity-error" role="alert"></span>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="system">Database System</label>
+                  <select id="system" class="form-control">
+                    <option value="">— Select DB system —</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Tags -->
+              <div class="form-group">
+                <label class="form-label" for="tags">
+                  Keywords / Tags
+                  <span class="char-hint" style="font-style:italic;text-transform:none">Optional — improves matching
+                    accuracy</span>
+                </label>
+                <input id="tags" type="text" class="form-control"
+                  placeholder="e.g. deadlock, timeout, 1205, CPU, high-load, ETL" autocomplete="off" />
+              </div>
+
+              <!-- Actions -->
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="analyze-btn">
+                  Analyze Recommendations
+                </button>
+                <button type="button" class="btn btn-secondary" id="clear-btn">Clear</button>
+                <span class="key-hint"><kbd>⌘</kbd>+<kbd>↵</kbd> to submit</span>
+              </div>
+
+            </div>
+          </form>
+        </div>
+
+      </div><!-- /tab-submit -->
+
+
+      <!-- ════════════════════════════════════
+         TAB 2 — RECOMMENDATIONS
+    ════════════════════════════════════ -->
+      <div class="tab-panel" id="tab-results">
+
+        <div class="section-header">
+          <h2 class="section-title">Recommendations</h2>
+          <p class="section-sub">Results from the recommendation engine ranked by confidence, severity fit,
+            and learned feedback.</p>
+        </div>
+
+        <div id="results-panel">
+          <div class="card" style="text-align:center;padding:3rem 2rem">
+            <div class="results-empty-mark">R</div>
+            <p style="color:var(--text-muted);font-size:0.9rem">No ticket analyzed yet. Submit a ticket to see patch
+              recommendations.</p>
+            <button class="btn btn-primary" style="margin-top:1.5rem" onclick="UI._switchTab('submit')">
+              Open Intake
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /tab-results -->
+
+
+      <!-- ════════════════════════════════════
+         TAB 3 — HISTORY
+    ════════════════════════════════════ -->
+      <div class="tab-panel" id="tab-history">
+
+        <div class="section-header">
+          <h2 class="section-title">History</h2>
+          <p class="section-sub">All submitted tickets stored locally on your device. Click any ticket to re-load it
+            into the form.</p>
+        </div>
+
+        <!-- Search -->
+          <div class="history-toolbar">
+            <div class="search-wrap">
+              <span class="search-icon">Search</span>
+              <input id="history-search" type="search" class="form-control"
+                placeholder="Search tickets by title, severity, or system…" aria-label="Search ticket history" />
+            </div>
+            <button class="btn btn-secondary" onclick="UI._clearHistoryOnly()"
+              style="white-space:nowrap">
+              Clear History
+            </button>
+            <button class="btn btn-secondary" onclick="UI._factoryResetAllData()"
+              style="white-space:nowrap;border-color:rgba(255,99,99,0.4);color:#ff6b6b">
+              Factory Reset
+            </button>
+          </div>
+
+          <div class="history-list" id="history-list">
+            <div class="history-empty">
+              <p>No tickets submitted yet. Analyze your first ticket!</p>
+            </div>
+          </div>
+
+      </div><!-- /tab-history -->
+
+
+      <!-- ════════════════════════════════════
+         TAB 4 — ANALYTICS
+    ════════════════════════════════════ -->
+      <div class="tab-panel" id="tab-analytics">
+
+        <div class="section-header">
+          <h2 class="section-title">Analytics</h2>
+          <p class="section-sub"> Analyze your first ticket to get AI patch suggestions. All recommendations come from
+            <strong>your trained tickets</strong> — the model learns exclusively from real fixes you add in the Train
+            tab.
+          </p>
+        </div>
+
+        <!-- KPI Row -->
+        <div class="analytics-kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-value" id="kpi-trained" style="color:var(--accent)">0</div>
+            <div class="kpi-label">Code-Trained Tasks</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value" id="kpi-patches" style="color:var(--success)">0</div>
+            <div class="kpi-label">Resolution Patterns</div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="analytics-grid">
+
+          <div class="analytics-card">
+            <div class="analytics-card-title">Patch Usage Frequency</div>
+            <div class="chart-wrap">
+              <canvas id="chart-usage"></canvas>
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="analytics-card-title">Ticket Severity Distribution</div>
+            <div class="chart-wrap">
+              <canvas id="chart-severity"></canvas>
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="analytics-card-title">Affected DB Systems</div>
+            <div class="chart-wrap">
+              <canvas id="chart-systems"></canvas>
+            </div>
+          </div>
+
+          <div class="analytics-card">
+            <div class="analytics-card-title">Patch Success Rates</div>
+            <div class="chart-wrap">
+              <canvas id="chart-success"></canvas>
+            </div>
+          </div>
+
+        </div><!-- /analytics-grid -->
+
+        <!-- Info Box -->
+        <div class="card" style="margin-top:1.5rem;padding:1.25rem">
+          <div style="font-size:0.82rem;color:var(--text-sec);line-height:1.7">
+            <strong style="color:var(--text-primary)">Data Privacy:</strong>
+            Recommendations, ranking, and analytics are computed locally on your machine.
+            Optional ticket sync (Azure DevOps/Jira) only runs when you configure and trigger it.
+            Ticket history, training data, and feedback weights are stored locally in your browser's
+            <code style="font-family:var(--font-mono);color:var(--accent)">localStorage</code>.
+            Integration tokens are kept in session storage and are not persisted across browser restarts.
+            You may clear all saved data at any time from the History tab.
+          </div>
+        </div>
+
+      </div><!-- /tab-analytics -->
+
+
+      <!-- ════════════════════════════════════
+         TAB 5 — TRAIN
+    ════════════════════════════════════ -->
+      <div class="tab-panel" id="tab-train">
+
+        <div class="section-header">
+          <h2 class="section-title">Training</h2>
+          <p class="section-sub">Fetch real tickets from your Azure DevOps org and add them to the AI training corpus.
+            The recommendation engine learns from every trained ticket.</p>
+        </div>
+
+        <!-- Fetch Controls -->
+        <div class="card">
+          <div class="train-fetch-grid">
+
+            <div class="form-group">
+              <label class="form-label" for="train-profile-select">
+                Integration Profile
+                <span class="char-hint" style="font-style:italic;text-transform:none">Configure in Settings</span>
+              </label>
+              <select id="train-profile-select" class="form-control">
+                <option value="">— No profiles saved —</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="train-wi-id">
+                Work Item ID or URL <span class="required">*</span>
+              </label>
+              <input id="train-wi-id" type="text" class="form-control" placeholder="e.g. 293553 or full ADO URL"
+                autocomplete="off" />
+            </div>
+
+            <div class="form-actions" style="align-items:flex-end">
+              <button type="button" class="btn btn-primary" id="train-fetch-btn">
+                Fetch Ticket
+              </button>
+            </div>
+
+          </div>
+          <div id="train-fetch-status" style="margin-top:0.75rem;font-size:0.83rem;min-height:1.4rem"></div>
+        </div>
+
+        <div class="card" style="margin-top:1rem">
+          <div class="section-header" style="margin-bottom:0.85rem">
+            <h3 class="section-title" style="font-size:0.95rem">Bulk Train From Resolved Tasks</h3>
+            <p class="section-sub" style="font-size:0.8rem">
+              Fetch resolved tickets created by on-call email IDs and train them in one run.
+            </p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="train-created-by-emails">
+              Created By Email IDs <span class="required">*</span>
+            </label>
+            <textarea id="train-created-by-emails" class="form-control" rows="3"
+              placeholder="one@company.com, two@company.com, three@company.com"></textarea>
+          </div>
+          <div class="train-fetch-grid" style="margin-top:0.5rem;grid-template-columns:1fr auto">
+            <div class="form-group">
+              <label class="form-label" for="train-bulk-limit">
+                Max Tickets to Train
+              </label>
+              <input id="train-bulk-limit" type="number" class="form-control" min="1" max="2000" step="1" value="200" />
+            </div>
+            <div class="form-actions" style="align-items:flex-end">
+              <button type="button" class="btn btn-primary" id="train-bulk-btn">
+                Bulk Train
+              </button>
+            </div>
+          </div>
+          <div id="train-bulk-status" style="margin-top:0.75rem;font-size:0.83rem;min-height:1.4rem"></div>
+          <div style="margin-top:0.35rem;font-size:0.77rem;color:var(--text-sec)">
+            Read-only safety: this app only reads tickets for training and does not post comments or update work items.
+          </div>
+        </div>
+
+        <!-- Ticket Preview -->
+        <div id="train-preview" class="train-preview-wrap"></div>
+
+        <!-- Resolution (auto-detected from PR or manual) -->
+        <div class="card" style="margin-top:1.25rem" id="train-resolution-card">
+          <div class="section-header" style="margin-bottom:1rem">
+            <h3 class="section-title" style="font-size:1rem">Resolution Evidence</h3>
+            <p class="section-sub" style="font-size:0.8rem">We'll auto-detect linked Pull Requests.
+              If no PR is found, describe how this was resolved.</p>
+          </div>
+
+          <!-- PR Info (auto-populated) -->
+          <div id="train-pr-info" style="display:none"></div>
+
+          <!-- PR Status indicator -->
+          <div id="train-pr-status" style="margin-bottom:0.75rem;font-size:0.83rem;min-height:1.4rem"></div>
+
+          <!-- Manual resolution (shown if no PR) -->
+          <div class="form-group" id="train-manual-group">
+            <label class="form-label" for="train-resolution-text">Resolution / Fix Description <span
+                class="required">*</span></label>
+            <textarea id="train-resolution-text" class="form-control" rows="4"
+              placeholder="Describe the code changes, config updates, or steps taken to resolve this issue…"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="train-add-btn">
+              Add to Training Corpus
+            </button>
+          </div>
+        </div>
+
+        <!-- Trained Tickets List -->
+        <div style="margin-top:2rem">
+          <div class="section-header">
+            <h3 class="section-title" style="font-size:1rem">Training Corpus
+              <span id="trained-count" class="trained-count-badge">0</span>
+            </h3>
+            <button class="btn btn-secondary" id="train-clear-btn" style="padding:0.4rem 0.8rem;font-size:0.78rem">
+              Clear All
+            </button>
+          </div>
+          <div id="trained-list" class="trained-list"></div>
+        </div>
+
+      </div><!-- /tab-train -->
+
+    </main>
+
+    <!-- ── FOOTER ── -->
+    <footer class="app-footer">
+      <span>Recall · Local-First · Privacy-First Incident Code Resolution</span>
+      <div class="footer-links">
+        <span>NLP Engine: Hybrid BM25 + TF-IDF (optional Backend RAG)</span>
+        <span>Storage: localStorage + optional provider sync</span>
+        <span>Charts: Chart.js (local)</span>
+      </div>
+    </footer>
+
+  </div><!-- /app-wrapper -->
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- ── SETTINGS MODAL ── -->
+      <div id="settings-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h2 id="settings-title" class="modal-title">Settings</h2>
+          <div id="settings-subtitle" class="modal-subtitle">Set up organization integrations and tune runtime options.</div>
+        </div>
+        <button id="modal-close-btn" class="modal-close" aria-label="Close settings">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Engine Toggle -->
+        <div class="settings-section">
+          <div class="settings-row settings-row--main">
+            <div class="settings-label-group">
+              <span class="settings-label">Use Ollama LLM</span>
+              <span class="settings-hint">Replaces TF-IDF with a local language model for smarter, context-aware
+                recommendations</span>
+            </div>
+            <label class="toggle-switch" for="ollama-toggle" aria-label="Enable Ollama">
+              <input type="checkbox" id="ollama-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-row settings-row--main">
+            <div class="settings-label-group">
+              <span class="settings-label">Recommendation Debug Mode</span>
+              <span class="settings-hint">Show score breakdown and matched signals on patch cards for diagnosis/tuning.</span>
+            </div>
+            <label class="toggle-switch" for="reco-debug-toggle" aria-label="Enable recommendation debug mode">
+              <input type="checkbox" id="reco-debug-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-row settings-row--main">
+            <div class="settings-label-group">
+              <span class="settings-label">Use Backend Recommendation API</span>
+              <span class="settings-hint">Prefer FastAPI hybrid retrieval/reranker engine, then auto-fallback to local modes.</span>
+            </div>
+            <label class="toggle-switch" for="backend-toggle" aria-label="Enable backend recommendation API">
+              <input type="checkbox" id="backend-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label" for="backend-url">Backend URL</label>
+            <input id="backend-url" type="text" class="form-control" style="width:320px" placeholder="http://127.0.0.1:8080" />
+            <label class="settings-label" for="backend-topk" style="min-width:auto">Top K</label>
+            <input id="backend-topk" type="number" class="form-control" style="width:90px" min="1" max="10" step="1" value="5" />
+            <button id="test-backend-btn" class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.83rem">
+              Test Backend
+            </button>
+          </div>
+          <div id="backend-status" class="settings-hint" style="line-height:1.5"></div>
+        </div>
+
+        <hr class="modal-divider" />
+
+        <!-- Model Selection -->
+        <div class="settings-section">
+          <div class="settings-section-title">Model Configuration</div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="ollama-model">Model Name</label>
+            <select id="ollama-model" class="form-control" style="width:230px"></select>
+          </div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="ollama-temp">Temperature <span id="ollama-temp-val">0.2</span></label>
+            <input id="ollama-temp" type="range" min="0" max="1" step="0.05" value="0.2"
+              style="width:160px; accent-color:var(--accent)" />
+          </div>
+          <div class="settings-hint" style="margin-top:0.25rem">Lower = more deterministic. Recommended: 0.1–0.3 for
+            technical recommendations.</div>
+        </div>
+
+        <hr class="modal-divider" />
+
+        <!-- Connection Test -->
+        <div class="settings-section">
+          <div class="settings-section-title">Connection</div>
+          <div class="settings-row">
+            <button id="test-conn-btn" class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.83rem">
+              Test Connection
+            </button>
+            <div id="conn-status" style="font-size:0.8rem;line-height:1.5"></div>
+          </div>
+        </div>
+
+        <hr class="modal-divider" />
+
+        <!-- Ticket Provider Integration -->
+        <div class="settings-section settings-section--integration">
+          <div class="settings-section-title">Organization Integrations (Start Here)</div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="integration-name">Profile Name</label>
+            <input id="integration-name" type="text" class="form-control" style="width:220px"
+              placeholder="e.g. Finance Support Org" />
+          </div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="integration-provider">Provider</label>
+            <select id="integration-provider" class="form-control" style="width:220px"></select>
+            <button id="integration-load-btn" class="btn btn-secondary"
+              style="padding:0.45rem 0.9rem;font-size:0.78rem">
+              Load Active Profile
+            </button>
+          </div>
+
+          <div id="integration-fields" class="integration-fields"></div>
+
+          <div class="settings-row">
+            <button id="integration-test-btn" class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.83rem">
+              Test Connection
+            </button>
+            <button id="integration-save-btn" class="btn btn-primary" style="padding:0.55rem 1rem;font-size:0.83rem">
+              Save & Activate
+            </button>
+            <button id="integration-sync-btn" class="btn btn-secondary" style="padding:0.55rem 1rem;font-size:0.83rem">
+              Sync Resolved
+            </button>
+          </div>
+
+          <div id="integration-status" class="settings-hint" style="line-height:1.6"></div>
+          <div id="integration-settings-note" class="settings-hint" style="margin-top:0.35rem">Profiles save immediately with <strong>Save & Activate</strong>. Footer save applies engine/runtime options.</div>
+          <div id="integration-saved-note" class="settings-hint" style="margin-top:0.6rem">Saved profiles and imported ticket counts:</div>
+          <div id="integration-security-note" class="settings-hint">Security note: API tokens are session-only and must be re-entered after a browser restart.</div>
+          <div id="integration-list" class="integration-list"></div>
+        </div>
+
+        <hr class="modal-divider" />
+
+        <!-- Install Instructions -->
+        <div class="settings-section">
+          <div class="settings-section-title">Quick Install (Run in Terminal)</div>
+          <div class="install-steps">
+            <div class="install-step">
+              <span class="install-step-num">1</span>
+              <code class="step-code" style="flex:1">brew install ollama</code>
+            </div>
+            <div class="install-step">
+              <span class="install-step-num">2</span>
+              <code class="step-code" style="flex:1">ollama serve</code>
+            </div>
+            <div class="install-step">
+              <span class="install-step-num">3</span>
+              <code class="step-code" style="flex:1">ollama pull phi4</code>
+              <span style="font-size:0.72rem;color:var(--text-muted)">~9GB download</span>
+            </div>
+            <div class="install-step">
+              <span class="install-step-num">4</span>
+              <code class="step-code" style="flex:1">ollama pull llama3.2</code>
+              <span style="font-size:0.72rem;color:var(--text-muted)">~2GB (faster option)</span>
+            </div>
+          </div>
+          <div class="settings-hint" style="margin-top:0.75rem">All models run 100% locally. No data sent anywhere.
+          </div>
+        </div>
+
+      </div><!-- /modal-body -->
+      <div class="modal-footer">
+        <button id="modal-close-btn2" class="btn btn-secondary" onclick="SettingsModal.close()">Cancel</button>
+        <button id="modal-save-btn" class="btn btn-primary" style="padding:0.7rem 1.75rem">Save Engine Options</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCRIPTS (all local, no CDN) ── -->
+  <script src="chart.min.js"></script>
+  <script src="data.js"></script>
+  <script src="azure.js"></script>
+  <script src="integrations.js"></script>
+  <script src="ollama.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,53 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="96" y1="88" x2="1100" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECF5FF"/>
+      <stop offset="0.54" stop-color="#E7FFF8"/>
+      <stop offset="1" stop-color="#FFF5E8"/>
+    </linearGradient>
+    <linearGradient id="cardA" x1="0" y1="0" x2="400" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D68D4"/>
+      <stop offset="1" stop-color="#1CA5A0"/>
+    </linearGradient>
+    <linearGradient id="cardB" x1="0" y1="0" x2="400" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#345CB8"/>
+      <stop offset="1" stop-color="#B8893D"/>
+    </linearGradient>
+    <linearGradient id="cardC" x1="0" y1="0" x2="400" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#21598B"/>
+      <stop offset="1" stop-color="#2BA29F"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="720" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="18" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect x="40" y="40" width="1120" height="640" rx="40" fill="url(#bg)" stroke="#D2E1F4"/>
+  <g filter="url(#shadow)">
+    <rect x="110" y="164" width="280" height="158" rx="24" fill="url(#cardA)"/>
+    <rect x="460" y="114" width="280" height="158" rx="24" fill="url(#cardB)"/>
+    <rect x="810" y="164" width="280" height="158" rx="24" fill="url(#cardC)"/>
+    <rect x="380" y="410" width="440" height="158" rx="24" fill="#FFFFFF" stroke="#D6E2F1"/>
+  </g>
+  <path d="M390 244H460" stroke="#5E7FB4" stroke-width="8" stroke-linecap="round"/>
+  <path d="M740 244H810" stroke="#5E7FB4" stroke-width="8" stroke-linecap="round"/>
+  <path d="M600 272V410" stroke="#5E7FB4" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="390" cy="244" r="8" fill="#5E7FB4"/>
+  <circle cx="460" cy="244" r="8" fill="#5E7FB4"/>
+  <circle cx="740" cy="244" r="8" fill="#5E7FB4"/>
+  <circle cx="810" cy="244" r="8" fill="#5E7FB4"/>
+  <circle cx="600" cy="272" r="8" fill="#5E7FB4"/>
+  <circle cx="600" cy="410" r="8" fill="#5E7FB4"/>
+  <text x="160" y="220" fill="white" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700">Incident Intake</text>
+  <text x="160" y="262" fill="#DCE9FF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">Title, severity,</text>
+  <text x="160" y="288" fill="#DCE9FF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">signals, context</text>
+  <text x="510" y="170" fill="white" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700">Hybrid Match</text>
+  <text x="510" y="212" fill="#E8F0FF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">Semantic + lexical +</text>
+  <text x="510" y="238" fill="#E8F0FF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">structured signals</text>
+  <text x="860" y="220" fill="white" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700">Patch Ranking</text>
+  <text x="860" y="262" fill="#E9FAF8" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">Evidence-backed</text>
+  <text x="860" y="288" fill="#E9FAF8" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">recommendations</text>
+  <text x="438" y="462" fill="#205689" font-family="Space Grotesk, Arial, sans-serif" font-size="30" font-weight="700">Feedback Loop</text>
+  <text x="438" y="500" fill="#5B7596" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">Accepted fixes tune ranking quality</text>
+  <text x="438" y="526" fill="#5B7596" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="18">for future incidents and faster response.</text>
+  <text x="96" y="104" fill="#204E82" font-family="Space Grotesk, Arial, sans-serif" font-size="28" font-weight="700">Recall Resolution Flow</text>
+</svg>

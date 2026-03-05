@@ -1,0 +1,35 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="canvas" x1="74" y1="70" x2="1090" y2="648" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FCFF"/>
+      <stop offset="0.56" stop-color="#F2FFF8"/>
+      <stop offset="1" stop-color="#FFF7ED"/>
+    </linearGradient>
+    <linearGradient id="layerOne" x1="0" y1="0" x2="1020" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F58C0"/>
+      <stop offset="1" stop-color="#1696A5"/>
+    </linearGradient>
+    <linearGradient id="layerTwo" x1="0" y1="0" x2="1020" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#315CB5"/>
+      <stop offset="1" stop-color="#B6812E"/>
+    </linearGradient>
+  </defs>
+  <rect x="40" y="40" width="1120" height="640" rx="40" fill="url(#canvas)" stroke="#D7E4F2"/>
+  <rect x="90" y="120" width="1020" height="128" rx="22" fill="url(#layerOne)"/>
+  <rect x="90" y="288" width="1020" height="128" rx="22" fill="url(#layerTwo)"/>
+  <rect x="90" y="456" width="1020" height="164" rx="22" fill="white" stroke="#D6E4F2"/>
+  <text x="132" y="172" fill="white" font-family="Space Grotesk, Arial, sans-serif" font-size="34" font-weight="700">Input + Context Layer</text>
+  <text x="132" y="210" fill="#E5EEFF" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20">Ticket intake, tags, severity, system signals, linked incident context</text>
+  <text x="132" y="340" fill="white" font-family="Space Grotesk, Arial, sans-serif" font-size="34" font-weight="700">Retrieval + Ranking Layer</text>
+  <text x="132" y="378" fill="#F6EEDE" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20">BM25, embeddings (Ollama), signal overlap, feedback boost, confidence gating</text>
+  <text x="132" y="512" fill="#1E5488" font-family="Space Grotesk, Arial, sans-serif" font-size="34" font-weight="700">Delivery Layer</text>
+  <text x="132" y="550" fill="#597696" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20">Explainable top recommendations, similar resolved incidents, patch evidence</text>
+  <text x="132" y="588" fill="#597696" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="20">Feedback capture for continuous learning and ranking quality improvements</text>
+  <circle cx="1058" cy="184" r="28" fill="#EAF2FF"/>
+  <circle cx="1058" cy="352" r="28" fill="#FDF3E5"/>
+  <circle cx="1058" cy="528" r="28" fill="#ECFBF6"/>
+  <path d="M1048 184L1055 191L1070 176" stroke="#3265BC" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M1048 352L1055 359L1070 344" stroke="#9E6B22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M1048 528L1055 535L1070 520" stroke="#1C8B82" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="94" y="98" fill="#1E4E83" font-family="Space Grotesk, Arial, sans-serif" font-size="28" font-weight="700">Recall Engine Architecture</text>
+</svg>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="About Recall - local-first incident code resolution workspace." />
+  <title>Recall · About</title>
+  <link rel="icon" type="image/svg+xml" href="assets/recall-symbol.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="info-page">
+  <div class="info-shell">
+    <header class="info-top">
+      <a class="info-brand" href="index.html">
+        <span class="info-brand-mark" aria-hidden="true"><img src="assets/recall-symbol.svg" alt="" /></span>
+        <span>Recall</span>
+      </a>
+      <nav class="info-links" aria-label="Information pages">
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="contributors.html">Contributors</a>
+        <a href="index.html">Open Workspace</a>
+      </nav>
+    </header>
+
+    <main class="info-main">
+      <section class="info-hero about-hero">
+        <div class="info-kicker">About</div>
+        <h1 class="info-title">Recall For <span>Faster Incident Fixes</span></h1>
+        <div class="about-hero-layout">
+          <div>
+            <p class="info-sub">
+              Recall is an on-call intelligence workspace that learns from already-resolved incidents and the code changes that fixed them.
+              It helps teams avoid repeating investigation work and move from alert to proven fix faster.
+            </p>
+            <div class="about-pill-row">
+              <span class="about-pill">Code-first recommendations</span>
+              <span class="about-pill">Explainable evidence</span>
+              <span class="about-pill">Local-first control</span>
+              <span class="about-pill">Org sync when ready</span>
+            </div>
+          </div>
+          <figure class="about-figure">
+            <img src="assets/about-recall-flow.svg" alt="Recall incident workflow from ticket intake to recommended fix" />
+          </figure>
+        </div>
+      </section>
+
+      <section class="about-section about-section--key">
+        <div class="about-section-head">
+          <div class="info-kicker">How To Use (Most Important)</div>
+          <h2>Use Recall In 4 Steps</h2>
+          <p>
+            This is the fastest way to get high-quality recommendations from your own incident history.
+          </p>
+        </div>
+        <div class="about-steps">
+          <article class="about-step">
+            <span class="about-step-num">1</span>
+            <div>
+              <h3>Integrate Organization</h3>
+              <p>Open Control Center, add Azure DevOps/Jira profile, and save the active workspace.</p>
+            </div>
+          </article>
+          <article class="about-step">
+            <span class="about-step-num">2</span>
+            <div>
+              <h3>Sync Resolved Tasks</h3>
+              <p>Run sync and train Recall with resolved incidents that include useful resolution and patch context.</p>
+            </div>
+          </article>
+          <article class="about-step">
+            <span class="about-step-num">3</span>
+            <div>
+              <h3>Submit New Incident</h3>
+              <p>Paste title, description, severity, and relevant signals like error codes and system details.</p>
+            </div>
+          </article>
+          <article class="about-step">
+            <span class="about-step-num">4</span>
+            <div>
+              <h3>Apply + Feedback</h3>
+              <p>Pick the most relevant recommendation, apply patch safely, and provide feedback to improve ranking.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <div class="about-section-head">
+          <div class="info-kicker">What And Why</div>
+          <h2>What We Do, Why We Need Recall</h2>
+        </div>
+        <div class="info-grid about-why-grid">
+          <article class="info-card">
+            <h3>What Recall Does</h3>
+            <p>Finds similar past incidents, maps them to known fixes, and returns ranked patch recommendations with reasoning.</p>
+          </article>
+          <article class="info-card">
+            <h3>Why Teams Need It</h3>
+            <p>On-call time is expensive. Recall reduces repetitive debugging and helps engineers reuse proven fixes confidently.</p>
+          </article>
+          <article class="info-card">
+            <h3>Why It Is Better For On-call</h3>
+            <p>Recommendations are evidence-backed, not generic. Engineers see similar incidents, fix history, and confidence signals.</p>
+          </article>
+          <article class="info-card">
+            <h3>Operational Safety</h3>
+            <p>Local-first storage and controlled organization integration keep rollout practical for real production teams.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="about-section">
+        <div class="about-section-head">
+          <div class="info-kicker">Technology</div>
+          <h2>What Runs Under The Hood</h2>
+          <p>
+            Recall combines retrieval, ranking, and code-context learning so recommendations are specific, explainable, and actionable.
+          </p>
+        </div>
+        <div class="about-tech-layout">
+          <figure class="about-figure">
+            <img src="assets/about-tech-stack.svg" alt="Recall architecture and recommendation engine layers" />
+          </figure>
+          <div class="about-tech-list">
+            <div class="about-tech-item"><strong>Frontend:</strong> Plain JavaScript workspace with local-first persistence and fast interaction.</div>
+            <div class="about-tech-item"><strong>Ingestion:</strong> Azure DevOps and Jira profile-based sync for resolved incidents.</div>
+            <div class="about-tech-item"><strong>Retrieval:</strong> Hybrid BM25/semantic candidate generation plus structured signal matching.</div>
+            <div class="about-tech-item"><strong>Embeddings:</strong> Ollama local embedding models (for semantic recall and similarity).</div>
+            <div class="about-tech-item"><strong>Ranking:</strong> Weighted rerank pipeline with feedback boost and confidence-aware abstain.</div>
+            <div class="about-tech-item"><strong>Explainability:</strong> Similar incident evidence + matched signals shown with recommendations.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="about-section about-stats">
+        <div class="about-section-head">
+          <div class="info-kicker">Proof And Stats</div>
+          <h2>Current Workspace Signals</h2>
+          <p>
+            Live indicators from your local workspace and configured backend endpoint.
+          </p>
+        </div>
+        <div class="about-stats-grid">
+          <article class="about-stat-card">
+            <div class="about-stat-label">Code-Trained Tickets</div>
+            <div id="about-stat-trained" class="about-stat-value">0</div>
+          </article>
+          <article class="about-stat-card">
+            <div class="about-stat-label">Imported Resolved Tickets</div>
+            <div id="about-stat-imported" class="about-stat-value">0</div>
+          </article>
+          <article class="about-stat-card">
+            <div class="about-stat-label">Configured Org Profiles</div>
+            <div id="about-stat-profiles" class="about-stat-value">0</div>
+          </article>
+          <article class="about-stat-card">
+            <div class="about-stat-label">Saved Incident History</div>
+            <div id="about-stat-history" class="about-stat-value">0</div>
+          </article>
+          <article class="about-stat-card">
+            <div class="about-stat-label">Backend Corpus Loaded</div>
+            <div id="about-stat-corpus" class="about-stat-value">-</div>
+          </article>
+          <article class="about-stat-card">
+            <div class="about-stat-label">Backend + Ollama Health</div>
+            <div id="about-stat-health" class="about-stat-value about-stat-health">Checking...</div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    (function aboutStatsBootstrap() {
+      function parseJson(raw, fallback) {
+        try {
+          return JSON.parse(raw || JSON.stringify(fallback));
+        } catch {
+          return fallback;
+        }
+      }
+
+      function safeNum(n) {
+        const val = Number(n);
+        return Number.isFinite(val) ? val : 0;
+      }
+
+      function text(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(value);
+      }
+
+      const training = parseJson(localStorage.getItem('azpatch_training_corpus'), []);
+      const profiles = parseJson(localStorage.getItem('azpatch_ticket_integrations'), []);
+      const activeProfileId = localStorage.getItem('azpatch_ticket_active_profile') || '';
+
+      let importedCount = 0;
+      profiles.forEach(p => {
+        if (!p || !p.id) return;
+        const imported = parseJson(localStorage.getItem(`azpatch_ticket_imported_${p.id}`), []);
+        importedCount += Array.isArray(imported) ? imported.length : 0;
+      });
+
+      const history = parseJson(localStorage.getItem(`azpatch_org_${activeProfileId || 'default'}_history`), []);
+      text('about-stat-trained', Array.isArray(training) ? training.length : 0);
+      text('about-stat-imported', importedCount);
+      text('about-stat-profiles', Array.isArray(profiles) ? profiles.length : 0);
+      text('about-stat-history', Array.isArray(history) ? history.length : 0);
+
+      const settings = parseJson(localStorage.getItem('az_recommendation_settings'), {});
+      const backendEnabled = !!settings.backendEnabled;
+      const backendUrl = String(settings.backendUrl || 'http://127.0.0.1:8080').replace(/\/+$/, '');
+
+      async function loadBackendHealth() {
+        if (!backendEnabled) {
+          text('about-stat-corpus', 'Local only');
+          text('about-stat-health', 'Backend disabled');
+          return;
+        }
+
+        try {
+          const res = await fetch(`${backendUrl}/health`, { method: 'GET' });
+          if (!res.ok) throw new Error('health check failed');
+          const data = await res.json();
+          text('about-stat-corpus', safeNum(data.tickets_loaded));
+          text('about-stat-health', data.ollama_reachable ? 'Healthy' : 'Backend up, Ollama down');
+        } catch {
+          text('about-stat-corpus', 'Unavailable');
+          text('about-stat-health', 'Backend unreachable');
+        }
+      }
+
+      loadBackendHealth();
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,20 @@
+.DS_Store
+
+# Legacy Python backend excluded (Java backend only going forward)
+backend/
+scripts/create_recall_demo_video.py
+
+# Local databases and SQLite runtime files
+*.db
+*.db-shm
+*.db-wal
+
+# Java / Maven build outputs
+spring-backend/target/
+
+# Node
+node_modules/
+
+# Logs and temp files
+*.log
+*.tmp
