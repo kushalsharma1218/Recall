@@ -215,6 +215,95 @@ const TicketIntegrations = {
         }
     },
 
+    _parseUrl(value, label) {
+        const raw = String(value || '').trim();
+        if (!raw) return { ok: false, error: `${label} is required.` };
+        let url = null;
+        try {
+            url = new URL(raw);
+        } catch {
+            return { ok: false, error: `${label} must be a valid URL.` };
+        }
+        if (url.username || url.password) {
+            return { ok: false, error: `${label} must not include embedded credentials.` };
+        }
+        if (url.search || url.hash) {
+            return { ok: false, error: `${label} must not include query params or fragments.` };
+        }
+        return { ok: true, url };
+    },
+
+    _validateAndNormalizeConfig(providerId, config = {}) {
+        const provider = this.getProvider(providerId);
+        if (!provider) return { ok: false, error: `Unsupported provider: ${providerId}` };
+
+        const normalized = {};
+        Object.entries(config || {}).forEach(([key, value]) => {
+            normalized[key] = typeof value === 'string' ? value.trim() : value;
+        });
+
+        if (providerId === 'azure') {
+            const parsed = this._parseUrl(normalized.orgUrl, 'Org URL');
+            if (!parsed.ok) return parsed;
+
+            const url = parsed.url;
+            const host = String(url.hostname || '').toLowerCase();
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            const isDevAzure = host === 'dev.azure.com';
+            const isVisualStudio = host.endsWith('.visualstudio.com');
+
+            if (url.protocol !== 'https:') {
+                return { ok: false, error: 'Org URL must use HTTPS.' };
+            }
+            if (!isDevAzure && !isVisualStudio) {
+                return { ok: false, error: 'Org URL host must be dev.azure.com or <org>.visualstudio.com.' };
+            }
+            if (isDevAzure && pathParts.length === 0) {
+                return { ok: false, error: 'Org URL must include org path (example: https://dev.azure.com/your-org).' };
+            }
+
+            normalized.orgUrl = isDevAzure
+                ? `${url.origin}/${pathParts[0]}`
+                : url.origin;
+            normalized.project = String(normalized.project || '').trim();
+            normalized.pat = String(normalized.pat || '').trim();
+
+            if (!normalized.project) return { ok: false, error: 'Project is required.' };
+            if (!normalized.pat) return { ok: false, error: 'PAT Token is required.' };
+
+            return { ok: true, config: normalized };
+        }
+
+        if (providerId === 'jira') {
+            const parsed = this._parseUrl(normalized.site, 'Jira Site URL');
+            if (!parsed.ok) return parsed;
+
+            const url = parsed.url;
+            const host = String(url.hostname || '').toLowerCase();
+            if (url.protocol !== 'https:') {
+                return { ok: false, error: 'Jira Site URL must use HTTPS.' };
+            }
+            if (!host.endsWith('.atlassian.net')) {
+                return { ok: false, error: 'Jira Cloud URL must end with .atlassian.net.' };
+            }
+
+            normalized.site = url.origin;
+            normalized.projectKey = String(normalized.projectKey || '').trim();
+            normalized.email = String(normalized.email || '').trim();
+            normalized.apiToken = String(normalized.apiToken || '').trim();
+
+            if (!normalized.projectKey) return { ok: false, error: 'Project Key is required.' };
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized.email)) {
+                return { ok: false, error: 'Jira Email must be a valid email address.' };
+            }
+            if (!normalized.apiToken) return { ok: false, error: 'API Token is required.' };
+
+            return { ok: true, config: normalized };
+        }
+
+        return { ok: true, config: normalized };
+    },
+
     _profileKey(profileId) {
         return `azpatch_ticket_imported_${profileId}`;
     },
@@ -393,7 +482,12 @@ const TicketIntegrations = {
     },
 
     saveProfile(profile) {
-        const { publicConfig, secrets } = this._extractConfig(profile.provider, profile.config || {});
+        const validated = this._validateAndNormalizeConfig(profile.provider, profile.config || {});
+        if (!validated.ok) {
+            throw new Error(validated.error || 'Invalid integration configuration.');
+        }
+
+        const { publicConfig, secrets } = this._extractConfig(profile.provider, validated.config || {});
         const persisted = { ...profile, config: publicConfig };
         const profiles = this.listProfiles();
         const idx = profiles.findIndex(p => p.id === persisted.id);
@@ -409,6 +503,8 @@ const TicketIntegrations = {
     createOrUpdateProfile(input) {
         const provider = this.getProvider(input.provider);
         if (!provider) throw new Error(`Unsupported provider: ${input.provider}`);
+        const validated = this._validateAndNormalizeConfig(input.provider, input.config || {});
+        if (!validated.ok) throw new Error(validated.error || 'Invalid integration configuration.');
 
         const name = (input.name || provider.label).trim();
         const existingId = input.id || '';
@@ -418,7 +514,7 @@ const TicketIntegrations = {
             id,
             name,
             provider: input.provider,
-            config: { ...(input.config || {}) },
+            config: { ...(validated.config || {}) },
             createdAt: input.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastSync: input.lastSync || null
@@ -479,7 +575,9 @@ const TicketIntegrations = {
     async testProfile(input) {
         const provider = this.getProvider(input.provider);
         if (!provider) return { ok: false, error: 'Unknown provider' };
-        return provider.testConnection(input.config || {});
+        const validated = this._validateAndNormalizeConfig(input.provider, input.config || {});
+        if (!validated.ok) return { ok: false, error: validated.error || 'Invalid integration configuration.' };
+        return provider.testConnection(validated.config || {});
     },
 
     async syncProfile(profileId, options = {}) {
@@ -489,9 +587,14 @@ const TicketIntegrations = {
 
             const provider = this.getProvider(profile.provider);
             if (!provider) return { ok: false, error: `Unsupported provider: ${profile.provider}` };
+            const validated = this._validateAndNormalizeConfig(profile.provider, profile.config || {});
+            if (!validated.ok) {
+                return { ok: false, error: validated.error || 'Invalid integration configuration.' };
+            }
+            const normalizedConfig = validated.config || {};
 
             const missingRequired = (provider.fields || [])
-                .filter(f => f.required && !(profile.config?.[f.key] || '').trim())
+                .filter(f => f.required && !(normalizedConfig?.[f.key] || '').trim())
                 .map(f => f.label);
             if (missingRequired.length) {
                 return {
@@ -500,7 +603,7 @@ const TicketIntegrations = {
                 };
             }
 
-            const result = await provider.fetchResolved(profile.config, options);
+            const result = await provider.fetchResolved(normalizedConfig, options);
             if (!result.ok) return result;
 
             const normalized = (result.items || []).map(item => {
@@ -528,7 +631,12 @@ const TicketIntegrations = {
             if (!this._saveImportedTickets(profile.id, normalized)) {
                 return { ok: false, error: 'Unable to store synced tickets (storage full or blocked).' };
             }
-            this.saveProfile({ ...profile, lastSync: new Date().toISOString(), updatedAt: new Date().toISOString() });
+            this.saveProfile({
+                ...profile,
+                config: normalizedConfig,
+                lastSync: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
 
             return {
                 ok: true,

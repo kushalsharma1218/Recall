@@ -37,17 +37,54 @@ const AzureDevOpsService = {
         return `azpatch_org_${orgId}_${suffix}`;
     },
 
+    _sanitizeOrgForStorage(org) {
+        if (!org || typeof org !== 'object') return null;
+        const safe = { ...org };
+        // Never persist credentials in localStorage.
+        delete safe.pat;
+        delete safe.token;
+        delete safe.apiToken;
+        delete safe.secret;
+        return safe;
+    },
+
     getAllOrgs() {
-        try { return JSON.parse(localStorage.getItem(this.ORGS_KEY) || '[]'); }
-        catch { return []; }
+        try {
+            const parsed = JSON.parse(localStorage.getItem(this.ORGS_KEY) || '[]');
+            if (!Array.isArray(parsed)) return [];
+
+            let changed = false;
+            const sanitized = parsed
+                .map(org => {
+                    const safe = this._sanitizeOrgForStorage(org);
+                    if (!safe) return null;
+                    if (
+                        Object.prototype.hasOwnProperty.call(org || {}, 'pat')
+                        || Object.prototype.hasOwnProperty.call(org || {}, 'token')
+                        || Object.prototype.hasOwnProperty.call(org || {}, 'apiToken')
+                        || Object.prototype.hasOwnProperty.call(org || {}, 'secret')
+                    ) {
+                        changed = true;
+                    }
+                    return safe;
+                })
+                .filter(Boolean);
+
+            if (changed) this._safeSetLocal(this.ORGS_KEY, JSON.stringify(sanitized));
+            return sanitized;
+        } catch {
+            return [];
+        }
     },
 
     saveOrg(org) {
-        // org: { id, name, orgUrl, project, pat, createdAt }
+        // org: { id, name, orgUrl, project, createdAt } (credentials are session-only)
+        const safeOrg = this._sanitizeOrgForStorage(org);
+        if (!safeOrg?.id) return;
         const orgs = this.getAllOrgs();
-        const idx = orgs.findIndex(o => o.id === org.id);
-        if (idx >= 0) orgs[idx] = org;
-        else orgs.push(org);
+        const idx = orgs.findIndex(o => o.id === safeOrg.id);
+        if (idx >= 0) orgs[idx] = safeOrg;
+        else orgs.push(safeOrg);
         this._safeSetLocal(this.ORGS_KEY, JSON.stringify(orgs));
     },
 

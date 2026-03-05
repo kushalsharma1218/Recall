@@ -1,7 +1,7 @@
 .DS_Store
 
 # Legacy Python backend excluded (Java backend only going forward)
-backend/
+/backend/
 scripts/create_recall_demo_video.py
 
 # Local databases and SQLite runtime files
