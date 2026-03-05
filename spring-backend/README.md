@@ -1,16 +1,72 @@
-# Recall Spring Backend (Strangler Migration)
+# Recall Spring Backend
 
-This module is the **best-practice migration path** from the current Python FastAPI backend to Spring Boot without hurting recommendation quality.
+This is the active Java backend for Recall. It serves recommendation APIs used by the frontend and supports local hybrid scoring with confidence-aware abstain behavior.
 
-## What this gives you
+## Purpose
 
-- Same API contract as today:
-  - `GET /health`
-  - `POST /v1/recommend`
-  - `POST /v1/feedback`
-  - `POST /v1/reload`
-- `local` mode (default): Spring-only hybrid scorer (no Python runtime in request path).
-- Optional `proxy` mode to forward to existing Python backend if you want side-by-side parity checks.
+- Provide a stable backend API for Recall UI
+- Score and rank patch recommendations from resolved incident corpus
+- Return explainable similar incidents and reasoning
+- Support feedback ingestion for ranking improvements
+
+## API Contract
+
+- `GET /health`
+- `POST /v1/recommend`
+- `POST /v1/feedback`
+- `POST /v1/reload`
+
+### Health example
+
+```bash
+curl http://127.0.0.1:8080/health
+```
+
+### Recommend example
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/recommend \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "title": "SQL deadlock in checkout",
+      "description": "Error 1205 under high write traffic",
+      "severity": "high",
+      "system": "SQL Server"
+    },
+    "patches": [
+      { "id": "patch_deadlock", "name": "Deadlock Retry" }
+    ],
+    "local_corpus": [],
+    "top_k": 5,
+    "debug": true
+  }'
+```
+
+## Recommendation Logic (Local Mode)
+
+`LocalFallbackRecommender` applies:
+
+- Tokenization and weighted lexical representation
+- BM25-style retrieval signal
+- TF-IDF cosine similarity
+- Structured signal overlap (error codes, DB/system, exception hints)
+- Context boosts (severity/system match, recency, feedback)
+- Confidence calibration and abstain when evidence is weak/ambiguous
+
+The backend also returns similar incidents and debug features when requested.
+
+## Runtime Modes
+
+Configured via `application.yml` (`recall.backend`):
+
+- `mode: local` (default and recommended)
+- `mode: proxy` (legacy bridge mode; optional compatibility path)
+- `fallback-enabled: true`
+
+Default port:
+
+- `8080`
 
 ## Run
 
@@ -19,29 +75,26 @@ cd spring-backend
 mvn spring-boot:run
 ```
 
-Default URL: `http://127.0.0.1:8080`
-
-In the frontend settings, point Backend URL to:
+Then point frontend backend URL to:
 
 ```text
 http://127.0.0.1:8080
 ```
 
-## Runtime modes
+## Test
 
-Configure in `application.yml`:
+```bash
+cd spring-backend
+mvn test
+```
 
-- `recall.backend.mode=local` (default, no Python required)
-- `recall.backend.mode=proxy` (route to existing Python backend)
+Included tests validate:
 
-Legacy backend target (used only in `proxy` mode):
+- Correct patch recommendation from similar incidents
+- Proper abstain behavior when no valid mapped evidence exists
 
-- `recall.backend.legacy-base-url=http://127.0.0.1:8000`
+## Configuration File
 
-## Suggested cutover sequence
+See:
 
-1. Run Spring backend on `8080` and point frontend to it.
-2. Validate quality/latency metrics on your gold test set.
-3. If needed, switch to `proxy` mode temporarily for parity comparison.
-4. Keep API contract stable during migration.
-5. Keep Python as optional benchmark reference, not a runtime dependency.
+- [src/main/resources/application.yml](src/main/resources/application.yml)

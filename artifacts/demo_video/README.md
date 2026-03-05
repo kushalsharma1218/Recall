@@ -15,6 +15,22 @@ This folder contains an auto-generated walkthrough video for Recall:
 4. Synthetic dataset benchmark and measured accuracy
 5. Under-the-hood architecture (frontend + retrieval + backend options)
 
+## Quick Preview Images
+
+- `frames/slide_02.png` — onboarding/integration flow
+- `frames/slide_03.png` — post-integration workspace flow
+- `frames/slide_04.png` — benchmark and accuracy snapshot
+- `frames/slide_05.png` — technical architecture summary
+
+## Measured Demo Accuracy (snapshot)
+
+- Top-1: 73.3%
+- Recall@3: 73.3%
+- Recall@5: 73.3%
+- MRR: 73.3%
+- Abstain Rate: 26.7%
+- Test Size: 60
+
 ## Data used for measured accuracy
 
 - Database: `backend/data/demo_recommendation.db`
