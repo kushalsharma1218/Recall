@@ -1,12 +1,12 @@
 {
-  "video": "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/recall_walkthrough.mp4",
+  "video": "artifacts/demo_video/recall_walkthrough.mp4",
   "slides": [
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_01.png",
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_02.png",
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_03.png",
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_04.png",
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_05.png",
-    "/Users/Kushal.Sharma1/.gemini/antigravity/playground/hidden-aldrin/artifacts/demo_video/frames/slide_06.png"
+    "artifacts/demo_video/frames/slide_01.png",
+    "artifacts/demo_video/frames/slide_02.png",
+    "artifacts/demo_video/frames/slide_03.png",
+    "artifacts/demo_video/frames/slide_04.png",
+    "artifacts/demo_video/frames/slide_05.png",
+    "artifacts/demo_video/frames/slide_06.png"
   ],
   "accuracy_report": {
     "Top-1": 0.733,
