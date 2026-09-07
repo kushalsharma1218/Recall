@@ -35,15 +35,18 @@ Fixed in the pass that introduced `RecommenderScoringTest`:
 - An abstain was reported to the frontend as a failure, which cascaded to the local engine and
   guessed anyway. An abstain is now an authoritative answer that stops the cascade.
 
-## Stage 2 — Make accuracy measurable
+## Stage 2 — Make accuracy measurable (harness done, real data pending)
 
-Nothing below this line is worth tuning until regressions are visible.
+The harness exists: `BacktestTest` replays incidents chronologically and gates the build on answer
+precision, hallucination rate and recall. See [TESTING.md](TESTING.md).
 
-1. **A golden set in the repo.** 100–200 resolved incidents with the fix that was actually applied,
-   as a fixture. Hold out 20%.
-2. **A metrics harness in CI** reporting Top-1, Recall@3, MRR — and separately, on the abstain
-   decision: precision (of the fixes we *did* recommend, how many were right) and abstain rate.
-   Fail the build when Top-1 or abstain precision regresses.
+What is still missing is **real data**. The bundled fixture is synthetic and its absolute numbers
+mean nothing; it exists to keep the gate stable.
+
+1. **Export a real dataset.** 100–200 resolved incidents with the fix that was actually applied.
+   Run `mvn test -Dtest=BacktestTest -Drecall.backtest.dataset=...`. Do not commit it.
+2. **Wire the harness into CI** against that dataset and re-baseline the thresholds, which are
+   currently set to the synthetic fixture's observed values.
 3. **Precision is the metric that matters, not recall.** A wrong fix during an incident costs more
    than no fix. Target abstain precision ≥ 0.9 and accept a high abstain rate early on; the
    thresholds in `LocalFallbackRecommender` (`MIN_TOP_CONFIDENCE`, `MIN_TOP_SCORE`, `TIE_MARGIN`)
@@ -70,7 +73,15 @@ schedule.
 
 ## Stage 4 — Retrieval quality
 
-Only after Stage 2 can these be judged rather than believed.
+Only after Stage 2 has real data can these be judged rather than believed. Two open items the
+harness has already surfaced and could not resolve on synthetic data:
+
+- **Confidence is anti-calibrated at the top end.** The `80-89` band scored 0% observed accuracy
+  while `50-69` scored 100%. Confidence is currently a hand-tuned polynomial; fit it instead.
+- **A contradiction penalty is an untested hypothesis.** Cutting confidence when past incidents
+  with the same symptoms were resolved differently sounds right and could not be validated on the
+  synthetic fixture — applied linearly it collapsed recall 73.5% -> 32.4%, applied sharply it did
+  nothing. It was reverted rather than tuned to make the numbers look good. Retry it on real data.
 
 1. **Embeddings alongside BM25.** Lexical matching fails on vocabulary mismatch ("connection pool
    exhausted" vs "no free connections"). Add a vector index (pgvector) and fuse with BM25 via the

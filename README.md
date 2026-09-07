@@ -145,6 +145,20 @@ From the included demo run:
 | Abstain Rate | 26.7% |
 | Test Size | 60 |
 
+## Testing
+
+```bash
+./tools/run-all-tests.sh
+```
+
+Five layers, ordered by what they catch — scoring invariants, robustness, HTTP contract, a
+chronological **accuracy backtest** with a CI gate, and browser journeys against a live backend.
+See [docs/TESTING.md](docs/TESTING.md).
+
+The backtest replays resolved incidents in time order, letting the engine see only what closed
+before each one, and reports answer precision, hallucination rate and confidence calibration.
+Point it at your own export with `-Drecall.backtest.dataset=...` (do not commit real incident data).
+
 ## Run Locally
 
 ### 1) Frontend

@@ -126,6 +126,8 @@ cd spring-backend
 mvn test
 ```
 
+See [docs/TESTING.md](../docs/TESTING.md) for the full strategy, including the accuracy backtest.
+
 Included tests validate:
 
 - Correct patch recommendation from similar incidents
@@ -134,6 +136,10 @@ Included tests validate:
 - The scoring invariants listed above
 - The HTTP contract: abstain payload shape, request validation, and 503 (downstream unavailable)
   versus 500 (defect here) error mapping
+- Robustness against malformed exports: null fields, ten malformed date formats, mixed
+  encodings, 200KB text, duplicate ids, concurrent feedback
+- Accuracy over a chronological replay (`BacktestTest`), gated on answer precision,
+  hallucination rate and recall so a change cannot quietly degrade ranking
 - Circuit-breaker open/close behavior
 - Proxy failure fallback to local strategy
 
