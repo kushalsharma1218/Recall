@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class QueryTicket {
     public String title = "";
     public String description = "";
-    public String severity = "medium";
+    // Deliberately blank, not "medium": a defaulted severity is indistinguishable from one the
+    // user actually chose, and the recommender scores severity agreement.
+    public String severity = "";
     public String system = "";
     public Object tags;
 }

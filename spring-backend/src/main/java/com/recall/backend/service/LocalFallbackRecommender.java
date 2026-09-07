@@ -2,8 +2,11 @@ package com.recall.backend.service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -16,6 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,12 +63,41 @@ public class LocalFallbackRecommender {
         "error", "errors", "issue", "issues", "problem", "problems", "ticket", "azure", "database", "db", "sql"
     );
 
+    /** BM25 saturation parameters, shared by scoring and the absolute-scale upper bound. */
+    private static final double BM25_K1 = 1.5;
+    private static final double BM25_B = 0.75;
+
+    /**
+     * Abstain gates. These are only meaningful because the retrieval score is on an absolute
+     * scale (see {@link #bm25UpperBound}) rather than normalised against the best row in the batch.
+     */
+    private static final int MIN_TOP_CONFIDENCE = 46;
+    private static final double MIN_TOP_SCORE = 0.18;
+    private static final double MIN_TOP_MARGIN = 0.08;
+    private static final int MARGIN_EXEMPT_CONFIDENCE = 67;
+    /**
+     * Below this margin the top two candidates are an effective tie. High confidence is confidence
+     * that the *incident* matches, which says nothing about which of two different fixes to apply,
+     * so a tie this tight always goes back to a human regardless of confidence.
+     */
+    private static final double TIE_MARGIN = 0.02;
+
+    /** Recency is a nudge, not a verdict: a stale ticket must never be buried by age alone. */
+    private static final double RECENCY_MIN = 0.92;
+    private static final double RECENCY_MAX = 1.08;
+
+    /** Bound on distinct patch ids tracked in memory, so unbounded feedback cannot exhaust the heap. */
+    private static final int MAX_TRACKED_FEEDBACK_KEYS = 10_000;
+    private static final int MAX_PATCH_ID_LENGTH = 200;
+
     private final ConcurrentHashMap<String, VoteCounter> feedback = new ConcurrentHashMap<>();
 
     public Map<String, Object> health() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("engine", "spring-local-hybrid");
-        out.put("tickets_loaded", 0);
+        // The corpus is supplied per request, so this process holds no tickets of its own.
+        // Reporting a hardcoded 0 read as "the corpus failed to load"; say what is actually true.
+        out.put("corpus_source", "request");
         out.put("ollama_reachable", false);
         out.put("feedback_tracked", feedback.size());
         return out;
@@ -85,7 +118,9 @@ public class LocalFallbackRecommender {
         List<IncidentDoc> docs = buildDocs(request.localCorpus);
         if (docs.isEmpty()) {
             response.abstained = true;
+            response.abstainCode = "empty_corpus";
             response.abstainReason = "No resolved ticket corpus is available yet.";
+            response.needsResolutionInput = true;
             response.debug.put("reason", "empty_corpus");
             return response;
         }
@@ -95,7 +130,11 @@ public class LocalFallbackRecommender {
         List<String> queryTokens = weightedTokens(query.title, query.description, parseTags(query.tags), "", "");
         if (queryTokens.isEmpty()) {
             response.abstained = true;
+            response.abstainCode = "empty_query";
             response.abstainReason = "Query is too short. Provide title and symptoms.";
+            // A thin query is a malformed request, not a gap in the corpus: asking the
+            // engineer to contribute a fix here would be asking the wrong question.
+            response.needsResolutionInput = false;
             response.debug.put("reason", "empty_query");
             return response;
         }
@@ -149,7 +188,11 @@ public class LocalFallbackRecommender {
             rawScores.put(doc.ticketId, feature);
         }
 
-        Map<String, Double> bm25Norm = normalize01(bm25Values);
+        // Normalising by the best row in the batch made the top row score 1.0 no matter how
+        // poor the match was, which defeated every absolute abstain threshold below. Scale by
+        // the score the query could achieve against a perfectly matching document instead.
+        double bm25Ceiling = bm25UpperBound(queryTokens, docFreq, docs.size());
+        Map<String, Double> bm25Norm = scaleByCeiling(bm25Values, bm25Ceiling);
 
         Map<String, Double> lexicalScore = new LinkedHashMap<>();
         for (IncidentDoc doc : docs) {
@@ -168,14 +211,13 @@ public class LocalFallbackRecommender {
                 else score *= 0.95;
             }
 
-            String qSev = normalizeSeverity(query.severity);
-            String dSev = normalizeSeverity(doc.severity);
+            String qSev = severityOrBlank(query.severity);
+            String dSev = severityOrBlank(doc.severity);
             if (!qSev.isBlank() && !dSev.isBlank()) {
                 score *= qSev.equals(dSev) ? 1.10 : 0.94;
             }
 
-            double days = daysSince(doc.changedDate);
-            double recency = 1.0 + Math.min(0.1, 180.0 / Math.max(180.0, days + 30.0) - 0.5);
+            double recency = recencyMultiplier(doc.changedDate);
             score *= recency;
 
             lexicalScore.put(tid, clamp(score, 0.0, 1.5));
@@ -183,12 +225,18 @@ public class LocalFallbackRecommender {
             rawScores.get(tid).put("recency", recency);
         }
 
-        List<Map.Entry<String, Double>> lexicalRanked = lexicalScore.entrySet().stream()
-            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-            .toList();
-        List<String> lexicalRankIds = lexicalRanked.stream().limit(200).map(Map.Entry::getKey).toList();
-
-        Map<String, Double> rrfScores = rrf(List.of(lexicalRankIds), 60);
+        // Reciprocal-rank fusion only adds information when it fuses *independent* rankings.
+        // Fusing the single lexical list with itself just re-expressed the same order while
+        // handing rank credit to documents that matched nothing at all.
+        Map<String, Double> rrfScores = rrf(
+            List.of(
+                rankedIds(lexicalScore),
+                rankedIds(bm25Values),
+                rankedIds(cosineValues),
+                rankedIds(signalValues)
+            ),
+            60
+        );
         Map<String, Double> rrfNorm = normalize01(rrfScores);
 
         List<ScoredDoc> combined = new ArrayList<>();
@@ -230,13 +278,15 @@ public class LocalFallbackRecommender {
 
             PatchBucket bucket = grouped.computeIfAbsent(patchId, ignored -> new PatchBucket());
             bucket.scoreSum += s.score;
+            bucket.bestScore = Math.max(bucket.bestScore, s.score);
             bucket.count += 1;
             bucket.docs.add(s);
 
             double sig = signalValues.getOrDefault(doc.ticketId, 0.0);
             bucket.signalSum += sig;
 
-            if (normalizeSeverity(doc.severity).equals(normalizeSeverity(query.severity))) {
+            String bucketQuerySeverity = severityOrBlank(query.severity);
+            if (!bucketQuerySeverity.isBlank() && bucketQuerySeverity.equals(severityOrBlank(doc.severity))) {
                 bucket.severityHits += 1;
             }
             if (!normalizeSystem(query.system).isBlank() && normalizeSystem(doc.system).equals(normalizeSystem(query.system))) {
@@ -261,6 +311,12 @@ public class LocalFallbackRecommender {
             PatchBucket g = entry.getValue();
 
             double avgSimilarity = g.scoreSum / Math.max(1, g.count);
+            double bestSimilarity = g.bestScore;
+            // Confidence used to be driven by the bucket mean alone, so a weak-but-above-floor
+            // third ticket supporting the same fix *lowered* confidence in a strong top match and
+            // could tip a correct answer into an abstain. Corroboration must never subtract.
+            // Lean on the best evidence; keep the mean as a consistency term.
+            double representativeSimilarity = 0.7 * bestSimilarity + 0.3 * avgSimilarity;
             int support = g.count;
             double signalStrength = g.signalSum / Math.max(1, support);
             double sevRatio = (double) g.severityHits / Math.max(1, support);
@@ -275,10 +331,10 @@ public class LocalFallbackRecommender {
 
             FeedbackScore feedbackScore = feedbackMultiplier(patchId);
 
-            double finalScore = avgSimilarity * supportBoost * signalBoost * severityBoost * systemBoost * errorBoost * feedbackScore.multiplier;
+            double finalScore = representativeSimilarity * supportBoost * signalBoost * severityBoost * systemBoost * errorBoost * feedbackScore.multiplier;
 
             double confidenceBase =
-                avgSimilarity * 70.0
+                representativeSimilarity * 70.0
                     + Math.min(16.0, support * 3.8)
                     + signalStrength * 16.0
                     + sysRatio * 12.0
@@ -312,6 +368,8 @@ public class LocalFallbackRecommender {
 
             if (Boolean.TRUE.equals(request.debug)) {
                 recommendation.features.put("avg_similarity", round(avgSimilarity, 6));
+                recommendation.features.put("best_similarity", round(bestSimilarity, 6));
+                recommendation.features.put("representative_similarity", round(representativeSimilarity, 6));
                 recommendation.features.put("support", (double) support);
                 recommendation.features.put("signal_strength", round(signalStrength, 6));
                 recommendation.features.put("severity_ratio", round(sevRatio, 6));
@@ -329,35 +387,58 @@ public class LocalFallbackRecommender {
         }
 
         boolean abstained = false;
+        String abstainCode = null;
         String abstainReason = null;
+        double topMargin = 1.0;
         if (recommendations.isEmpty()) {
             abstained = true;
-            abstainReason = "No clear fix pattern found from similar incidents.";
+            if (topMatches.isEmpty()) {
+                abstainCode = "no_similar_incident";
+                abstainReason = "No past incident resembles this one closely enough to learn from.";
+            } else {
+                abstainCode = "no_patch_evidence";
+                abstainReason = "Similar incidents were found, but none records a fix we can reuse.";
+            }
         } else {
             Recommendation top = recommendations.get(0);
             Recommendation second = recommendations.size() > 1 ? recommendations.get(1) : null;
-            double margin = 1.0;
             if (second != null) {
-                margin = (top.score - second.score) / Math.max(top.score, 1e-6);
+                topMargin = (top.score - second.score) / Math.max(top.score, 1e-6);
             }
 
-            boolean weakEvidence = top.confidence < 46 || top.score < 0.18 || top.evidence.isEmpty();
-            boolean ambiguous = second != null && margin < 0.08 && top.confidence < 67;
-            if (weakEvidence || ambiguous) {
+            // Every bucket is built from at least one document, so top.evidence is never empty
+            // here; the old check for it could not fire and is dropped.
+            if (top.confidence < MIN_TOP_CONFIDENCE || top.score < MIN_TOP_SCORE) {
                 abstained = true;
-                abstainReason = "Similar incidents found, but no single fix has strong enough evidence yet.";
+                abstainCode = "weak_evidence";
+                abstainReason = "Similar incidents found, but none matches closely enough to propose a fix.";
+            } else if (second != null
+                && (topMargin < TIE_MARGIN
+                    || (topMargin < MIN_TOP_MARGIN && top.confidence < MARGIN_EXEMPT_CONFIDENCE))) {
+                abstained = true;
+                abstainCode = "ambiguous_evidence";
+                abstainReason = "Several past fixes match about equally well; no single fix stands out.";
+            }
+
+            if (abstained) {
                 recommendations = List.of();
             }
         }
 
         response.abstained = abstained;
+        response.abstainCode = abstainCode;
         response.abstainReason = abstainReason;
+        // Signals to the caller that the right next step is to collect a resolution from the
+        // engineer and feed it back into the corpus, rather than to show a guessed fix.
+        response.needsResolutionInput = abstained;
         response.recommendations = recommendations;
 
         if (Boolean.TRUE.equals(request.debug)) {
             response.debug.put("corpus_size", docs.size());
             response.debug.put("top_similarity", round(topSimilarity, 6));
             response.debug.put("similarity_floor", round(similarityFloor, 6));
+            response.debug.put("bm25_ceiling", round(bm25Ceiling, 6));
+            response.debug.put("top_margin", round(topMargin, 6));
             response.debug.put("top_candidates", combined.stream().limit(8).map(sc -> {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("ticket_id", sc.doc.ticketId);
@@ -376,9 +457,18 @@ public class LocalFallbackRecommender {
         if (key.isBlank()) {
             throw new IllegalArgumentException("patchId is required");
         }
+        if (key.length() > MAX_PATCH_ID_LENGTH) {
+            throw new IllegalArgumentException("patchId must be at most " + MAX_PATCH_ID_LENGTH + " characters");
+        }
         String normalizedVote = safe(vote).trim().toLowerCase(Locale.ROOT);
         if (!"up".equals(normalizedVote) && !"down".equals(normalizedVote)) {
             throw new IllegalArgumentException("vote must be 'up' or 'down'");
+        }
+
+        // Patch ids arrive from the client, so an unbounded map is a memory-exhaustion vector.
+        // Existing keys keep accepting votes; only brand-new keys are refused once the cap is hit.
+        if (!feedback.containsKey(key) && feedback.size() >= MAX_TRACKED_FEEDBACK_KEYS) {
+            throw new IllegalStateException("Feedback capacity reached; reload the backend to reset counters");
         }
 
         VoteCounter counter = feedback.computeIfAbsent(key, ignored -> new VoteCounter());
@@ -404,7 +494,7 @@ public class LocalFallbackRecommender {
             String title = safe(ticket.title);
             String description = safe(ticket.description);
             String resolution = safe(ticket.resolutionDescription);
-            String severity = normalizeSeverity(ticket.severity);
+            String severity = severityOrBlank(ticket.severity);
             String system = safe(ticket.system);
             String source = safe(ticket.source);
             String changedDate = safe(ticket.changedDate);
@@ -489,19 +579,59 @@ public class LocalFallbackRecommender {
         if (queryTokens.isEmpty() || docLen <= 0 || totalDocs <= 0) return 0.0;
 
         double score = 0.0;
-        double k1 = 1.5;
-        double b = 0.75;
         Set<String> uniqueQuery = new HashSet<>(queryTokens);
 
         for (String term : uniqueQuery) {
             int tf = docTf.getOrDefault(term, 0);
             if (tf == 0) continue;
-            int df = docFreq.getOrDefault(term, 0);
-            double idf = Math.log(1.0 + ((totalDocs - df + 0.5) / (df + 0.5)));
-            double denom = tf + k1 * (1 - b + b * (docLen / Math.max(avgDocLen, 1e-6)));
-            score += idf * ((tf * (k1 + 1.0)) / denom);
+            double idf = bm25Idf(term, docFreq, totalDocs);
+            double denom = tf + BM25_K1 * (1 - BM25_B + BM25_B * (docLen / Math.max(avgDocLen, 1e-6)));
+            score += idf * ((tf * (BM25_K1 + 1.0)) / denom);
         }
         return score;
+    }
+
+    private double bm25Idf(String term, Map<String, Integer> docFreq, int totalDocs) {
+        int df = docFreq.getOrDefault(term, 0);
+        return Math.log(1.0 + ((totalDocs - df + 0.5) / (df + 0.5)));
+    }
+
+    /**
+     * Highest BM25 score this query could earn against a hypothetical document that saturates
+     * every query term. Dividing by it turns BM25 into an absolute "how much of the query did
+     * this document actually cover" ratio, so the abstain thresholds mean something.
+     *
+     * <p>Query terms absent from the whole corpus are deliberately still counted, because a
+     * document that does not contain them has genuinely not matched the full query.
+     */
+    private double bm25UpperBound(List<String> queryTokens, Map<String, Integer> docFreq, int totalDocs) {
+        double ceiling = 0.0;
+        for (String term : new HashSet<>(queryTokens)) {
+            // tf -> infinity drives the saturation term to its (k1 + 1) limit.
+            ceiling += bm25Idf(term, docFreq, totalDocs) * (BM25_K1 + 1.0);
+        }
+        return ceiling;
+    }
+
+    private Map<String, Double> scaleByCeiling(Map<String, Double> values, double ceiling) {
+        if (values.isEmpty()) return Map.of();
+        Map<String, Double> out = new LinkedHashMap<>();
+        if (ceiling <= 0.0) {
+            values.keySet().forEach(k -> out.put(k, 0.0));
+            return out;
+        }
+        values.forEach((k, v) -> out.put(k, clamp(v / ceiling, 0.0, 1.0)));
+        return out;
+    }
+
+    /** Ids ordered by descending value, keeping only entries that actually scored. */
+    private List<String> rankedIds(Map<String, Double> values) {
+        return values.entrySet().stream()
+            .filter(e -> e.getValue() != null && e.getValue() > 0.0)
+            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+            .limit(200)
+            .map(Map.Entry::getKey)
+            .toList();
     }
 
     private double cosine(Map<String, Double> a, Map<String, Double> b) {
@@ -561,22 +691,58 @@ public class LocalFallbackRecommender {
         return scores;
     }
 
-    private double daysSince(String isoDate) {
+    /**
+     * Age of a ticket in days, or empty when no usable timestamp was supplied. An unknown date
+     * is genuinely unknown; it must not be reported as "very old".
+     */
+    private OptionalDouble daysSince(String isoDate) {
         String value = safe(isoDate).trim();
-        if (value.isEmpty()) return 3650.0;
+        if (value.isEmpty()) return OptionalDouble.empty();
+
+        Instant instant = parseInstant(value);
+        if (instant == null) return OptionalDouble.empty();
+
+        Duration delta = Duration.between(instant, Instant.now());
+        return OptionalDouble.of(Math.max(0.0, delta.toSeconds() / 86400.0));
+    }
+
+    private Instant parseInstant(String value) {
+        String normalized = value.replace(" ", "T");
         try {
-            OffsetDateTime date = OffsetDateTime.parse(value.replace("Z", "+00:00"));
-            Duration delta = Duration.between(date.toInstant(), Instant.now());
-            return Math.max(0.0, delta.toSeconds() / 86400.0);
-        } catch (Exception ex1) {
-            try {
-                Instant parsed = Instant.parse(value);
-                Duration delta = Duration.between(parsed, Instant.now());
-                return Math.max(0.0, delta.toSeconds() / 86400.0);
-            } catch (Exception ex2) {
-                return 3650.0;
-            }
+            return OffsetDateTime.parse(normalized.replace("Z", "+00:00")).toInstant();
+        } catch (DateTimeParseException ignored) {
+            // fall through
         }
+        try {
+            return Instant.parse(normalized);
+        } catch (DateTimeParseException ignored) {
+            // fall through
+        }
+        try {
+            // Azure DevOps sends offset timestamps, but CSV and manual imports routinely carry
+            // a local date-time or a bare date. Treat those as UTC rather than discarding them.
+            return LocalDateTime.parse(normalized).toInstant(ZoneOffset.UTC);
+        } catch (DateTimeParseException ignored) {
+            // fall through
+        }
+        try {
+            return LocalDate.parse(normalized).atStartOfDay().toInstant(ZoneOffset.UTC);
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Recency is a tie-breaker between otherwise comparable incidents, so it is clamped to a
+     * narrow band. The previous formula was unbounded below and multiplied an unknown or
+     * unparseable date by ~0.55, burying otherwise perfect matches for having no timestamp.
+     */
+    private double recencyMultiplier(String changedDate) {
+        OptionalDouble days = daysSince(changedDate);
+        if (days.isEmpty()) return 1.0;
+
+        double raw = 1.0 + (180.0 / Math.max(180.0, days.getAsDouble() + 30.0) - 0.5);
+        return clamp(raw, RECENCY_MIN, RECENCY_MAX);
     }
 
     private FeedbackScore feedbackMultiplier(String patchId) {
@@ -601,7 +767,7 @@ public class LocalFallbackRecommender {
         String comments = safe(stringVal(source.get("comments")));
         String tags = String.join(" ", parseTags(source.get("tags")));
         String system = safe(stringVal(source.get("system")));
-        String severity = normalizeSeverity(stringVal(source.get("severity")));
+        String severity = severityOrBlank(stringVal(source.get("severity")));
 
         String combined = String.join(" ", title, description, resolution, comments, tags, system).trim();
 
@@ -786,10 +952,22 @@ public class LocalFallbackRecommender {
     }
 
     private String normalizeSeverity(String raw) {
-        String s = safe(raw).toLowerCase(Locale.ROOT);
+        String s = severityOrBlank(raw);
+        return s.isBlank() ? "medium" : s;
+    }
+
+    /**
+     * Severity for scoring purposes, preserving "not supplied" as blank.
+     *
+     * <p>Collapsing an absent severity to "medium" made every request carry a severity nobody
+     * entered, so unrelated tickets earned a match bonus and correctly-matching tickets of a
+     * different severity were penalised — on a field the user never filled in.
+     */
+    private String severityOrBlank(String raw) {
+        String s = safe(raw).trim().toLowerCase(Locale.ROOT);
         return switch (s) {
             case "critical", "high", "medium", "low" -> s;
-            default -> "medium";
+            default -> "";
         };
     }
 
@@ -876,6 +1054,7 @@ public class LocalFallbackRecommender {
 
     private static final class PatchBucket {
         private double scoreSum = 0.0;
+        private double bestScore = 0.0;
         private int count = 0;
         private double signalSum = 0.0;
         private int severityHits = 0;

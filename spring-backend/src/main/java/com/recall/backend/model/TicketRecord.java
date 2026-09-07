@@ -7,7 +7,8 @@ public class TicketRecord {
     public Object id;
     public String title = "";
     public String description = "";
-    public String severity = "medium";
+    // See QueryTicket.severity — an absent severity must stay absent, not silently become "medium".
+    public String severity = "";
     public String system = "";
     public Object tags;
     public String resolvedPatch;

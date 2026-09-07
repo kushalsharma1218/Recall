@@ -609,7 +609,9 @@ const BackendRecommendationService = {
                 recommendations: recommendations.slice(0, topK),
                 similarIncidents,
                 abstained: !!data.abstained,
+                abstainCode: data.abstainCode || '',
                 abstainReason: data.abstainReason || '',
+                needsResolutionInput: !!data.needsResolutionInput,
                 engine: data.engine || 'hybrid-rag-api',
                 debug: data.debug || {}
             };
@@ -2265,21 +2267,41 @@ const UI = {
                 ? PatchRecommender.findSimilarResolvedTickets(fullText, ticket.severity, ticket.system, 5)
                 : []);
 
-        // If backend abstains or cannot map any patch, force fallback to local engines.
-        if (!recommendations.length) {
-            return {
-                ok: false,
-                abstained: true,
-                error: result.abstainReason || 'Backend could not find a confident patch match.'
-            };
+        // An abstain is a deliberate answer, not a backend failure. Falling through to Ollama
+        // and then to the local engine replaced "we do not know" with a guess from a less
+        // careful scorer, which is exactly what the abstain exists to prevent. Only a transport
+        // or protocol failure (result.success === false, handled above) may cascade.
+        if (result.abstained || !recommendations.length) {
+            ticket.recommendations = [];
+            ticket.similarIncidents = similarIncidents.map(m => m.ticket?.id || m.ticket?.adoId || m.ticket?.externalId || 'unknown');
+            ticket.engine = 'backend';
+            ticket.backendEngine = result.engine || 'hybrid-rag';
+            ticket.backendAbstained = true;
+            ticket.backendAbstainCode = result.abstainCode || '';
+            ticket.backendAbstainReason = result.abstainReason || 'No fix has strong enough evidence yet.';
+            ticket.needsResolutionInput = !!result.needsResolutionInput;
+
+            FeedbackStore.saveTicket(ticket);
+            this.activeTicketId = ticket.id;
+            this.currentResults = [];
+            this.currentSimilarIncidents = similarIncidents;
+
+            if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+            this._renderResults(ticket, [], 'backend', similarIncidents);
+            this._switchTab('results');
+            this._renderStats();
+            this._showToast(ticket.backendAbstainReason, 'info');
+            return { ok: true, abstained: true };
         }
 
         ticket.recommendations = recommendations.map(r => r.patch.id);
         ticket.similarIncidents = similarIncidents.map(m => m.ticket.id || m.ticket.adoId || m.ticket.externalId || 'unknown');
         ticket.engine = 'backend';
         ticket.backendEngine = result.engine || 'hybrid-rag';
-        ticket.backendAbstainReason = result.abstainReason || '';
-        ticket.backendAbstained = !!result.abstained;
+        ticket.backendAbstained = false;
+        ticket.backendAbstainCode = '';
+        ticket.backendAbstainReason = '';
+        ticket.needsResolutionInput = false;
 
         FeedbackStore.saveTicket(ticket);
         this.activeTicketId = ticket.id;
@@ -2290,9 +2312,6 @@ const UI = {
         this._renderResults(ticket, recommendations, 'backend', similarIncidents);
         this._switchTab('results');
         this._renderStats();
-        if (ticket.backendAbstained && ticket.backendAbstainReason) {
-            this._showToast(ticket.backendAbstainReason, 'info');
-        }
         return { ok: true, result };
     },
 
@@ -2473,6 +2492,20 @@ const UI = {
             `
             : '';
 
+        // When the engine declines to recommend, the useful next step is to capture the fix the
+        // on-call engineer lands on, so the next person with this incident gets an answer.
+        const resolutionPrompt = ticket.needsResolutionInput
+            ? `
+            <div class="resolution-prompt">
+              <p class="resolution-prompt-title">Recall does not have a confident answer for this incident.</p>
+              <p class="resolution-prompt-body">
+                ${this._escapeHtml(ticket.backendAbstainReason || 'No past fix matches closely enough.')}
+                Once you resolve it, add the fix so the next person gets an answer.
+              </p>
+              <button type="button" class="btn-primary" id="record-resolution-btn">Record the fix</button>
+            </div>`
+            : '';
+
         panel.innerHTML = `
       <div class="results-header">
         <div class="results-ticket-info">
@@ -2515,12 +2548,17 @@ const UI = {
                 ? `<div class="no-results">
                <div class="no-results-icon">R</div>
                <p>No mapped patch template found for this issue yet.</p>
+               ${resolutionPrompt}
                ${similarIncidentSection}
              </div>`
                 : recommendations.map((rec, idx) => this._renderPatchCard(rec, idx, ticket.id, engine)).join('')
             }
       </div>
     `;
+
+        panel.querySelector('#record-resolution-btn')?.addEventListener('click', () => {
+            this._switchTab('train');
+        });
 
         // Bind feedback buttons
         panel.querySelectorAll('.feedback-btn').forEach(btn => {

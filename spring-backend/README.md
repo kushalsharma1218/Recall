@@ -48,13 +48,50 @@ curl -X POST http://127.0.0.1:8080/v1/recommend \
 `LocalFallbackRecommender` applies:
 
 - Tokenization and weighted lexical representation
-- BM25-style retrieval signal
+- BM25 retrieval, scaled against the query's own maximum achievable score so the result is an
+  absolute "how much of the query did this document cover" ratio rather than a rank within the batch
 - TF-IDF cosine similarity
 - Structured signal overlap (error codes, DB/system, exception hints)
-- Context boosts (severity/system match, recency, feedback)
-- Confidence calibration and abstain when evidence is weak/ambiguous
+- Reciprocal-rank fusion across the independent lexical, BM25, cosine and signal rankings
+- Context boosts (severity/system match, recency, feedback) — each applied only when the
+  underlying field was actually supplied
+- Confidence calibration and abstain when evidence is weak or ambiguous
 
 The backend also returns similar incidents and debug features when requested.
+
+### Abstain contract
+
+`POST /v1/recommend` returns these fields whenever it declines to recommend:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `abstained` | boolean | No fix is being proposed |
+| `abstainCode` | string | Stable reason code (below) |
+| `abstainReason` | string | Human-readable explanation |
+| `needsResolutionInput` | boolean | The caller should ask the engineer to record a fix |
+
+| `abstainCode` | Triggered when |
+|---|---|
+| `empty_corpus` | No resolved tickets were supplied |
+| `empty_query` | Query produced no usable tokens — `needsResolutionInput` is `false` here |
+| `no_similar_incident` | Nothing cleared the similarity floor |
+| `no_patch_evidence` | Similar incidents matched, but none carries a reusable fix |
+| `weak_evidence` | Top candidate below the confidence or absolute score gate |
+| `ambiguous_evidence` | Top two candidates are an effective tie |
+
+`similarIncidents` stays populated while abstaining, so the engineer keeps the context even when
+no fix is recommended.
+
+### Scoring invariants
+
+These are enforced by tests in `RecommenderScoringTest` and are easy to regress:
+
+- A field the user never filled in must not influence ranking. An absent `severity` stays blank
+  rather than defaulting to `medium`.
+- An unknown or unparseable `changedDate` is treated as unknown, not as very old. Recency is a
+  bounded tie-breaker (`0.92`–`1.08`), never a verdict.
+- Additional tickets agreeing on the same fix must never *lower* confidence.
+- A document sharing no signal with the query scores exactly zero.
 
 ## Runtime Modes
 
@@ -92,7 +129,11 @@ mvn test
 Included tests validate:
 
 - Correct patch recommendation from similar incidents
-- Proper abstain behavior when no valid mapped evidence exists
+- Abstain behaviour across every reason code, including an unrelated incident that shares only
+  incidental vocabulary with the corpus
+- The scoring invariants listed above
+- The HTTP contract: abstain payload shape, request validation, and 503 (downstream unavailable)
+  versus 500 (defect here) error mapping
 - Circuit-breaker open/close behavior
 - Proxy failure fallback to local strategy
 

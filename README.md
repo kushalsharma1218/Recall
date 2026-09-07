@@ -49,9 +49,26 @@ On-call teams repeatedly solve similar production problems. Valuable fix context
 | Local state | `localStorage` (history, training, feedback) |
 | API | `/health`, `/v1/recommend`, `/v1/feedback`, `/v1/reload` |
 
-## Repository Scope
+## Repository Layout
 
-- Included in git: frontend + `spring-backend` (Java)
+```
+frontend/            Browser workspace (no build step)
+  index.html         Landing page + main workspace
+  about|contact|contributors.html
+  css/style.css
+  js/app.js          UI, local scoring engine, stores
+  js/azure.js        Azure DevOps integration
+  js/integrations.js Provider abstraction
+  js/ollama.js       Optional local LLM path
+  js/data.js         Seed patch library / historical tickets
+  vendor/chart.min.js
+  assets/            SVG artwork
+spring-backend/      Java 17 / Spring Boot 3.3 recommendation API
+docs/                Technical deep dive
+artifacts/           Demo video, frames, benchmark summary
+```
+
+- Included in git: `frontend/` + `spring-backend/` (Java)
 - Legacy Python backend is intentionally not tracked in this repository
 
 ## Current Product Flow
@@ -74,6 +91,24 @@ On-call teams repeatedly solve similar production problems. Valuable fix context
 - Scoring using lexical + signal overlap + context features
 - Confidence gating with abstain when evidence is weak
 - Feedback-aware ranking improvements over time
+
+### Abstain: when Recall asks instead of answers
+
+Recall refuses to guess. When the evidence does not support a fix, `/v1/recommend` returns
+`abstained: true` with a machine-readable `abstainCode`, and `needsResolutionInput: true` tells
+the UI to ask the on-call engineer to record the fix so the next person gets an answer.
+
+| `abstainCode` | Meaning |
+|---|---|
+| `empty_corpus` | Nothing has been ingested yet |
+| `empty_query` | Query too thin to match on (the request needs fixing, not the corpus) |
+| `no_similar_incident` | Nothing in the corpus resembles this incident |
+| `no_patch_evidence` | Similar incidents exist, but none records a reusable fix |
+| `weak_evidence` | The best match is not close enough to act on |
+| `ambiguous_evidence` | Several past fixes match equally well; a human must choose |
+
+An abstain is an answer, not a failure: the frontend stops its engine cascade there rather than
+falling through to a less careful scorer.
 
 For backend details, see [spring-backend/README.md](spring-backend/README.md).
 
@@ -117,7 +152,7 @@ From the included demo run:
 From project root:
 
 ```bash
-npx http-server . -p 4173
+npx http-server frontend -p 4173
 ```
 
 Open:

@@ -5143,3 +5143,29 @@ body.landing-active #toast-container {
 #settings-modal.settings-modal--onboarding #integration-security-note {
   display: none;
 }
+
+/* ── Abstain / resolution prompt ───────────────────────────
+   Shown when the engine declines to recommend a fix, so the
+   next step is capturing the resolution rather than guessing. */
+.resolution-prompt {
+  margin: 1rem 0 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid #ffd32a55;
+  border-left: 3px solid #ffd32a;
+  border-radius: 10px;
+  background: #ffd32a12;
+  text-align: left;
+}
+
+.resolution-prompt-title {
+  margin: 0 0 0.4rem;
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.resolution-prompt-body {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
