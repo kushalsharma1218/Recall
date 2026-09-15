@@ -12,6 +12,7 @@ which is exactly where the abstain used to be thrown away.
 | Corpus has no answer | **No** fix is shown, the "Record the fix" prompt appears, and it opens the training tab |
 | Backend unreachable | Falls back to the local engine and labels it honestly |
 | Hostile ticket text | Markup renders as text — no execution, no injected elements |
+| Measurement loop | A decision reaches the log, resolving reports an outcome, the dashboard shows the KPIs **and their caveats** |
 
 The second and third rows together pin the distinction the product depends on: an **abstain is an
 answer** and must stop the engine cascade, while a **transport failure is not** and may fall through.

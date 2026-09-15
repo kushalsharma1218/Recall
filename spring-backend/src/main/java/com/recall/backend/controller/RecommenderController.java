@@ -4,9 +4,12 @@ import java.util.Map;
 
 import com.recall.backend.model.FeedbackRequest;
 import com.recall.backend.model.FeedbackResponse;
+import com.recall.backend.model.OutcomeRequest;
+import com.recall.backend.model.OutcomeResponse;
 import com.recall.backend.model.RecommendRequest;
 import com.recall.backend.model.RecommendResponse;
 import com.recall.backend.service.RecommenderService;
+import com.recall.backend.telemetry.KpiReport;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,5 +43,26 @@ public class RecommenderController {
     @PostMapping("/v1/reload")
     public Map<String, Object> reload() {
         return recommenderService.reload();
+    }
+
+    /**
+     * Reports what actually resolved an incident. This is the only way the service learns whether
+     * its recommendations were right, so it is the endpoint that makes the KPIs below mean anything.
+     */
+    @PostMapping("/v1/outcome")
+    public OutcomeResponse outcome(@Valid @RequestBody OutcomeRequest request) {
+        boolean recorded = recommenderService.recordOutcome(
+            request.decisionId, request.appliedPatchId, request.suggestionAccepted, request.source);
+
+        return recorded
+            ? new OutcomeResponse(true, request.decisionId, "Outcome recorded")
+            : new OutcomeResponse(false, request.decisionId,
+                "Unknown decisionId — it may have aged out of the decision window");
+    }
+
+    /** Live accuracy and health KPIs over the recent decision window. */
+    @GetMapping("/v1/metrics")
+    public KpiReport metrics() {
+        return recommenderService.metrics();
     }
 }

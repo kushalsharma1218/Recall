@@ -51,7 +51,10 @@ mean nothing; it exists to keep the gate stable.
    than no fix. Target abstain precision ≥ 0.9 and accept a high abstain rate early on; the
    thresholds in `LocalFallbackRecommender` (`MIN_TOP_CONFIDENCE`, `MIN_TOP_SCORE`, `TIE_MARGIN`)
    are the dials, and they should be *fitted to the golden set*, not guessed.
-4. **Log every abstain with its code.** The distribution tells you what to build next: mostly
+4. **Online measurement is wired** (`/v1/outcome`, `/v1/metrics`, see [MEASUREMENT.md](MEASUREMENT.md)).
+   Labels come from the engineer today; Stage 3 makes the ticket system the source, which is
+   unbiased and free. The decision log is in-memory until then.
+5. **Log every abstain with its code.** The distribution tells you what to build next: mostly
    `no_similar_incident` means an ingestion/coverage problem, mostly `ambiguous_evidence` means a
    patch-taxonomy problem, mostly `weak_evidence` means a retrieval problem. These are very
    different projects and the counter tells you which one you have.

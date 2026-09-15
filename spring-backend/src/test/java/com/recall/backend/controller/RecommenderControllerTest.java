@@ -2,6 +2,7 @@ package com.recall.backend.controller;
 
 import com.recall.backend.model.RecommendResponse;
 import com.recall.backend.service.RecommenderService;
+import com.recall.backend.telemetry.KpiReport;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -87,6 +90,71 @@ class RecommenderControllerTest {
         mockMvc.perform(post("/v1/recommend").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.error").value("service_unavailable"));
+    }
+
+    @Test
+    void recommendResponseCarriesADecisionIdToReportOutcomesAgainst() throws Exception {
+        RecommendResponse response = new RecommendResponse();
+        response.decisionId = "d-123";
+        when(recommenderService.recommend(any())).thenReturn(response);
+
+        mockMvc.perform(post("/v1/recommend").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.decisionId").value("d-123"));
+    }
+
+    @Test
+    void acceptsAnOutcomeForAKnownDecision() throws Exception {
+        when(recommenderService.recordOutcome(anyString(), anyString(), anyBoolean(), anyString()))
+            .thenReturn(true);
+
+        mockMvc.perform(post("/v1/outcome")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"decisionId\":\"d-123\",\"appliedPatchId\":\"patch_a\","
+                    + "\"suggestionAccepted\":false,\"source\":\"ticket-system\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.recorded").value(true));
+    }
+
+    /** A label arriving after its decision aged out is expected, not an error. */
+    @Test
+    void reportsAnUnknownDecisionWithoutFailingTheRequest() throws Exception {
+        when(recommenderService.recordOutcome(anyString(), anyString(), anyBoolean(), anyString()))
+            .thenReturn(false);
+
+        mockMvc.perform(post("/v1/outcome")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"decisionId\":\"gone\",\"appliedPatchId\":\"patch_a\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.recorded").value(false))
+            .andExpect(jsonPath("$.message").value(Matchers.containsString("aged out")));
+    }
+
+    @Test
+    void rejectsAnOutcomeWithNoDecisionId() throws Exception {
+        mockMvc.perform(post("/v1/outcome")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"appliedPatchId\":\"patch_a\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("validation_failed"));
+    }
+
+    /** The dashboard reads this; the caveats must survive serialisation or they cannot be shown. */
+    @Test
+    void exposesLiveKpisIncludingTheirCaveats() throws Exception {
+        KpiReport kpi = new KpiReport();
+        kpi.decisions = 12;
+        kpi.answerPrecision = 0.75;
+        kpi.independentPrecision = 0.5;
+        kpi.caveats = java.util.List.of("Sample is thin");
+        when(recommenderService.metrics()).thenReturn(kpi);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/v1/metrics"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.decisions").value(12))
+            .andExpect(jsonPath("$.answerPrecision").value(0.75))
+            .andExpect(jsonPath("$.independentPrecision").value(0.5))
+            .andExpect(jsonPath("$.caveats[0]").value("Sample is thin"));
     }
 
     /**

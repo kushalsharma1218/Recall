@@ -13,6 +13,8 @@ import com.recall.backend.model.RecommendResponse;
 import com.recall.backend.service.gateway.LocalRecommendationGateway;
 import com.recall.backend.service.gateway.ProxyRecommendationGateway;
 import com.recall.backend.service.resilience.LegacyCircuitBreaker;
+import com.recall.backend.telemetry.DecisionLog;
+import com.recall.backend.telemetry.KpiReport;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,17 +24,20 @@ public class RecommenderService {
     private final ProxyRecommendationGateway proxyGateway;
     private final LocalRecommendationGateway localGateway;
     private final LegacyCircuitBreaker legacyCircuitBreaker;
+    private final DecisionLog decisionLog;
 
     public RecommenderService(
         BackendProperties properties,
         ProxyRecommendationGateway proxyGateway,
         LocalRecommendationGateway localGateway,
-        LegacyCircuitBreaker legacyCircuitBreaker
+        LegacyCircuitBreaker legacyCircuitBreaker,
+        DecisionLog decisionLog
     ) {
         this.properties = properties;
         this.proxyGateway = proxyGateway;
         this.localGateway = localGateway;
         this.legacyCircuitBreaker = legacyCircuitBreaker;
+        this.decisionLog = decisionLog;
     }
 
     public Map<String, Object> health() {
@@ -79,6 +84,26 @@ public class RecommenderService {
     }
 
     public RecommendResponse recommend(RecommendRequest request) {
+        long startNanos = System.nanoTime();
+        RecommendResponse response = route(request);
+        long latencyMs = (System.nanoTime() - startNanos) / 1_000_000;
+
+        int corpusSize = request.localCorpus == null ? 0 : request.localCorpus.size();
+        response.decisionId = decisionLog.record(response, corpusSize, latencyMs);
+        return response;
+    }
+
+    /** Live KPIs over the recent decision window. */
+    public KpiReport metrics() {
+        return decisionLog.snapshot();
+    }
+
+    /** Attaches the real outcome to an earlier decision. False when that decision is unknown. */
+    public boolean recordOutcome(String decisionId, String appliedPatchId, boolean accepted, String source) {
+        return decisionLog.recordOutcome(decisionId, appliedPatchId, accepted, source);
+    }
+
+    private RecommendResponse route(RecommendRequest request) {
         if (properties.getMode() == BackendProperties.Mode.LOCAL) {
             return localGateway.recommend(request);
         }

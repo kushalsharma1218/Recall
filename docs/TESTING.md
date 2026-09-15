@@ -8,7 +8,7 @@ Run everything with one command:
 
 It runs the backend suites, starts the services if needed, and drives the UI in a browser.
 
-## Why four layers
+## Why six layers
 
 A recommender fails in a way ordinary software does not: it keeps working, and quietly gets worse.
 No individual test fails, no exception is thrown, and nobody notices until an engineer stops
@@ -21,6 +21,7 @@ trusting it. So the layers below are ordered by what they can catch, not by how 
 | 3. Contract | `RecommenderControllerTest` | The abstain payload silently changing shape |
 | 4. Accuracy | `BacktestTest` | A change that fixes one case and degrades twenty |
 | 5. Journeys | `frontend/e2e` | A correct decision being discarded on its way to the screen |
+| 6. Live KPIs | `DecisionLogTest`, `/v1/metrics` | Real-world accuracy drifting away from the backtest |
 
 Layer 4 is the one most projects skip, and it is the only layer that can catch a *gradual*
 regression. Layer 5 exists because the most damaging bug found so far lived entirely in the
@@ -142,12 +143,25 @@ when real data exists.
 
 ## Layer 5 — Journeys
 
-See [frontend/e2e/README.md](../frontend/e2e/README.md). Four journeys in a real browser against a
+See [frontend/e2e/README.md](../frontend/e2e/README.md). Five journeys in a real browser against a
 real backend. Two of them together pin the distinction the product depends on: an **abstain is an
 answer** and must stop the engine cascade, while a **transport failure is not** and may fall
 through to the local engine.
 
 These are mutation-checked too — reverting the frontend abstain fix makes the journey fail.
+
+## Layer 6 — Live measurement
+
+Layers 1-5 all run against data you control. Layer 6 measures what actually happens on real
+incidents, which no offline suite can: production traffic is not the past.
+
+It is a join, not a counter — the label arrives long after the decision. See
+[MEASUREMENT.md](MEASUREMENT.md) for the design, the three biases it corrects for, and the one
+thing it structurally cannot measure (abstention quality, which stays with the backtest).
+
+`DecisionLogTest` covers the KPI arithmetic, and the guards matter more than the arithmetic: a
+dashboard reporting a number that *sounds* like accuracy but is not does more damage than no
+dashboard. One E2E journey drives the whole loop — decision, outcome, live KPI, caveats rendered.
 
 ## Adding a test
 

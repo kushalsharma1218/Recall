@@ -608,6 +608,7 @@ const BackendRecommendationService = {
                 success: true,
                 recommendations: recommendations.slice(0, topK),
                 similarIncidents,
+                decisionId: data.decisionId || '',
                 abstained: !!data.abstained,
                 abstainCode: data.abstainCode || '',
                 abstainReason: data.abstainReason || '',
@@ -621,6 +622,48 @@ const BackendRecommendationService = {
                 return { success: false, error: `Backend request timed out after ${this.TIMEOUT_MS / 1000}s.` };
             }
             return { success: false, error: err?.message || 'Backend request failed.' };
+        }
+    },
+
+    /**
+     * Reports what actually resolved an incident, against the decision that produced the
+     * recommendation. This is the only signal that turns Recall's opinions into a measured
+     * accuracy, so it is worth reporting even when we were wrong — especially then.
+     *
+     * `suggestionAccepted` must be honest: true means the engineer applied what we proposed, which
+     * makes the label partly our own output echoed back. The backend discounts those rows.
+     */
+    async reportOutcome(decisionId, appliedPatchId, suggestionAccepted, source = 'engineer') {
+        const cfg = this.getConfig();
+        if (!cfg.enabled || !cfg.url || !decisionId) return { ok: false, skipped: true };
+        try {
+            const res = await fetch(`${cfg.url}/v1/outcome`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    decisionId,
+                    appliedPatchId: appliedPatchId || '',
+                    suggestionAccepted: !!suggestionAccepted,
+                    source
+                })
+            });
+            if (!res.ok) return { ok: false };
+            return { ok: true, data: await res.json() };
+        } catch {
+            return { ok: false };
+        }
+    },
+
+    /** Live accuracy and health KPIs over the backend's recent decision window. */
+    async fetchMetrics() {
+        const cfg = this.getConfig();
+        if (!cfg.enabled || !cfg.url) return { ok: false, skipped: true };
+        try {
+            const res = await fetch(`${cfg.url}/v1/metrics`);
+            if (!res.ok) return { ok: false };
+            return { ok: true, data: await res.json() };
+        } catch {
+            return { ok: false };
         }
     },
 
@@ -1880,6 +1923,7 @@ const UI = {
 
         if (tab === 'analytics') {
             setTimeout(() => this._renderCharts(), 50);
+            this._renderLiveKpis();
         }
         if (tab === 'history') {
             this._renderHistory();
@@ -2276,6 +2320,7 @@ const UI = {
             ticket.similarIncidents = similarIncidents.map(m => m.ticket?.id || m.ticket?.adoId || m.ticket?.externalId || 'unknown');
             ticket.engine = 'backend';
             ticket.backendEngine = result.engine || 'hybrid-rag';
+            ticket.decisionId = result.decisionId || '';
             ticket.backendAbstained = true;
             ticket.backendAbstainCode = result.abstainCode || '';
             ticket.backendAbstainReason = result.abstainReason || 'No fix has strong enough evidence yet.';
@@ -2298,6 +2343,7 @@ const UI = {
         ticket.similarIncidents = similarIncidents.map(m => m.ticket.id || m.ticket.adoId || m.ticket.externalId || 'unknown');
         ticket.engine = 'backend';
         ticket.backendEngine = result.engine || 'hybrid-rag';
+        ticket.decisionId = result.decisionId || '';
         ticket.backendAbstained = false;
         ticket.backendAbstainCode = '';
         ticket.backendAbstainReason = '';
@@ -2436,6 +2482,68 @@ const UI = {
           ${topTerms}
         </div>
       </div>`;
+    },
+
+    /**
+     * Renders measured accuracy from the backend decision log.
+     *
+     * <p>Every rate is shown with the denominator it was computed over, and the backend's caveats
+     * are rendered verbatim rather than summarised away. A precision figure with no sample size
+     * next to it is how a dashboard starts lying to the people reading it.
+     */
+    async _renderLiveKpis() {
+        const body = document.getElementById('live-kpi-body');
+        if (!body) return;
+
+        if (!BackendRecommendationService.isEnabled()) {
+            body.innerHTML = '<p class="live-kpi-empty">Enable the backend in Settings to measure accuracy on live traffic.</p>';
+            return;
+        }
+
+        const result = await BackendRecommendationService.fetchMetrics();
+        if (!result.ok) {
+            body.innerHTML = '<p class="live-kpi-empty">Backend unreachable — live measurements unavailable.</p>';
+            return;
+        }
+
+        const k = result.data || {};
+        if (!k.decisions) {
+            body.innerHTML = '<p class="live-kpi-empty">No decisions recorded yet. Analyse an incident to start measuring.</p>';
+            return;
+        }
+
+        const pct = v => `${((v || 0) * 100).toFixed(1)}%`;
+        const metric = (value, label, n, primary) => `
+            <div class="live-kpi-metric${primary ? ' live-kpi-metric--primary' : ''}">
+              <div class="live-kpi-metric-value">${value}</div>
+              <div class="live-kpi-metric-label">${this._escapeHtml(label)}</div>
+              ${n !== null && n !== undefined ? `<div class="live-kpi-metric-n">n = ${n}</div>` : ''}
+            </div>`;
+
+        const codes = Object.entries(k.abstainsByCode || {});
+        const breakdown = codes.length
+            ? `<p class="live-kpi-breakdown">Declined because: ${codes
+                .map(([code, n]) => `<code>${this._escapeHtml(code)}</code> ${n}`).join(' · ')}</p>`
+            : '';
+
+        const caveats = (k.caveats || []).length
+            ? `<div class="live-kpi-caveats">
+                 <div class="live-kpi-caveats-title">Read before quoting these numbers</div>
+                 <ul>${k.caveats.map(c => `<li>${this._escapeHtml(c)}</li>`).join('')}</ul>
+               </div>`
+            : '';
+
+        body.innerHTML = `
+          <div class="live-kpi-grid">
+            ${metric(pct(k.independentPrecision), 'Independent precision', k.independentlyLabelled, true)}
+            ${metric(pct(k.answerPrecision), 'Answer precision (all labels)', k.answeredAndLabelled)}
+            ${metric(pct(k.coverage), 'Coverage', k.decisions)}
+            ${metric(pct(k.captureRate), 'Abstentions that taught us something', k.abstentions)}
+            ${metric(pct(k.labelCoverage), 'Outcomes known', k.decisions)}
+            ${metric(`${k.latencyP95Ms || 0} ms`, 'Latency p95', null)}
+          </div>
+          ${breakdown}
+          ${caveats}`;
     },
 
     _renderResults(ticket, recommendations, engine = 'tfidf', similarIncidents = []) {
@@ -2768,6 +2876,17 @@ const UI = {
 
         FeedbackStore.recordFeedback(patchId, true);
         BackendRecommendationService.recordFeedback(patchId, 'up').catch(() => { });
+
+        // The label that makes live accuracy measurable. suggestionAccepted is true because the
+        // engineer resolved the incident with the patch we put in front of them — the backend
+        // needs to know that so it can discount the row when computing independent precision.
+        const resolvedTicket = (FeedbackStore.getHistory() || []).find(t => t.id === ticketId);
+        if (resolvedTicket?.decisionId) {
+            BackendRecommendationService
+                .reportOutcome(resolvedTicket.decisionId, patchId, true, 'engineer')
+                .catch(() => { });
+        }
+
         this._showToast('Ticket marked as resolved. Patch effectiveness logged.', 'success');
         this._renderStats();
         this._renderHistory();

@@ -8,6 +8,7 @@ import com.recall.backend.model.RecommendResponse;
 import com.recall.backend.service.gateway.LocalRecommendationGateway;
 import com.recall.backend.service.gateway.ProxyRecommendationGateway;
 import com.recall.backend.service.resilience.LegacyCircuitBreaker;
+import com.recall.backend.telemetry.DecisionLog;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -37,7 +38,7 @@ class RecommenderServiceTest {
         when(proxy.recommend(any())).thenThrow(new RuntimeException("proxy down"));
         when(local.recommend(any())).thenReturn(localResp);
 
-        RecommenderService service = new RecommenderService(properties, proxy, local, breaker);
+        RecommenderService service = new RecommenderService(properties, proxy, local, breaker, new DecisionLog());
         RecommendResponse response = service.recommend(new RecommendRequest());
 
         assertThat(response.engine).isEqualTo("spring-local-hybrid");
@@ -58,7 +59,7 @@ class RecommenderServiceTest {
         LegacyCircuitBreaker breaker = new LegacyCircuitBreaker(properties);
         breaker.recordFailure(); // opens immediately because threshold=1
 
-        RecommenderService service = new RecommenderService(properties, proxy, local, breaker);
+        RecommenderService service = new RecommenderService(properties, proxy, local, breaker, new DecisionLog());
 
         assertThatThrownBy(() -> service.recommend(new RecommendRequest()))
             .isInstanceOf(IllegalStateException.class)

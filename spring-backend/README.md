@@ -15,6 +15,12 @@ This is the active Java backend for Recall. It serves recommendation APIs used b
 - `POST /v1/recommend`
 - `POST /v1/feedback`
 - `POST /v1/reload`
+- `POST /v1/outcome` — reports the fix that actually resolved an incident
+- `GET /v1/metrics` — live accuracy, calibration and health KPIs
+
+`/v1/recommend` returns a `decisionId`. Reporting the real outcome against it later is what turns
+Recall from a system with opinions into one with a measured accuracy — see
+[docs/MEASUREMENT.md](../docs/MEASUREMENT.md).
 
 ### Health example
 

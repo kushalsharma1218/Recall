@@ -47,7 +47,7 @@ On-call teams repeatedly solve similar production problems. Valuable fix context
 | Backend | Java 17, Spring Boot 3.3.x, Maven |
 | Integrations | Azure DevOps, Jira |
 | Local state | `localStorage` (history, training, feedback) |
-| API | `/health`, `/v1/recommend`, `/v1/feedback`, `/v1/reload` |
+| API | `/health`, `/v1/recommend`, `/v1/feedback`, `/v1/reload`, `/v1/outcome`, `/v1/metrics` |
 
 ## Repository Layout
 
@@ -144,6 +144,26 @@ From the included demo run:
 | MRR | 73.3% |
 | Abstain Rate | 26.7% |
 | Test Size | 60 |
+
+## Measuring accuracy
+
+Two different questions, two different tools:
+
+- **Offline** — how good is the ranker on history? A chronological backtest, gated in CI.
+- **Online** — what is happening on real incidents now? `POST /v1/outcome` reports the fix that
+  actually resolved an incident, joined to the decision that recommended one, and `GET /v1/metrics`
+  reports live precision, calibration, abstain breakdown and capture rate.
+
+The headline figure is **independent precision** — accuracy over outcomes the engineer reached
+*without* applying our suggestion, so the measurement is not just our own output echoed back.
+Every rate ships with its sample size, and the API returns plain-language caveats when the numbers
+are too thin or too circular to quote. See [docs/MEASUREMENT.md](docs/MEASUREMENT.md).
+
+Try the pipeline before real data exists:
+
+```bash
+python3 tools/simulate_production.py --incidents 80
+```
 
 ## Testing
 

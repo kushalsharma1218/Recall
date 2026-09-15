@@ -179,6 +179,64 @@ try {
   check('markup in ticket text is not injected as an element', injectedImg === 0,
     `injected <img>: ${injectedImg}`);
 
+  // ─────────────────────────────────────────────────────────────
+  // 5. The measurement loop: a decision, a real outcome, a live KPI.
+  //    Without this the dashboard is decoration — accuracy can only be
+  //    measured if outcomes make it back to the decision that caused them.
+  // ─────────────────────────────────────────────────────────────
+  await seed(page, { corpus: SQL_CORPUS, backendUrl: BACKEND });
+
+  const before = await page.evaluate(async url => {
+    const r = await fetch(`${url}/v1/metrics`);
+    return r.json();
+  }, BACKEND);
+
+  await submitIncident(page, {
+    title: 'SQL deadlock in the checkout path',
+    description: 'Deadlock victim error 1205 raised on concurrent order writes under load',
+    severity: 'high',
+  });
+
+  const decisionId = await page.evaluate(() => {
+    const history = JSON.parse(localStorage.getItem(
+      Object.keys(localStorage).find(k => k.endsWith('_history'))) || '[]');
+    return history[0]?.decisionId || '';
+  });
+  check('the recommendation carries a decisionId to measure against', !!decisionId,
+    `decisionId: "${decisionId}"`);
+
+  // "Mark resolved" is the engineer naming what actually fixed it — the strongest label there is.
+  const resolveBtn = page.locator('[data-patch][data-ticket]').first();
+  const hasResolve = await resolveBtn.count();
+  if (hasResolve) {
+    await resolveBtn.click();
+    await page.waitForTimeout(600);
+  }
+
+  const after = await page.evaluate(async url => {
+    const r = await fetch(`${url}/v1/metrics`);
+    return r.json();
+  }, BACKEND);
+
+  check('the decision reached the backend decision log',
+    after.decisions > before.decisions,
+    `decisions ${before.decisions} -> ${after.decisions}`);
+  check('resolving the incident reported an outcome back',
+    after.labelledDecisions > before.labelledDecisions,
+    `labelled ${before.labelledDecisions} -> ${after.labelledDecisions}`);
+  check('a label the engineer took from our suggestion is flagged as circular',
+    (after.caveats || []).some(c => c.includes('circular')),
+    `caveats: ${JSON.stringify(after.caveats)}`);
+
+  // The dashboard must show the caveats, not just the flattering headline number.
+  await page.click('[data-tab="analytics"]');
+  await page.waitForTimeout(900);
+  const kpiShown = await page.locator('#live-kpi-body .live-kpi-metric').count();
+  const caveatsShown = await page.locator('#live-kpi-body .live-kpi-caveats li').count();
+  check('the analytics tab shows measured KPIs', kpiShown > 0, `metric tiles: ${kpiShown}`);
+  check('the dashboard shows the caveats alongside the numbers', caveatsShown > 0,
+    `caveat items: ${caveatsShown}`);
+
   check('no uncaught page errors across all journeys', pageErrors.length === 0,
     pageErrors.join('\n          '));
 } catch (err) {

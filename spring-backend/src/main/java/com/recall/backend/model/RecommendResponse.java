@@ -37,5 +37,12 @@ public class RecommendResponse {
     @JsonProperty("similarIncidents")
     public List<SimilarIncident> similarIncidents = new ArrayList<>();
 
+    /**
+     * Identifies this decision so the caller can report the real outcome later via
+     * {@code POST /v1/outcome}. Without it there is no way to learn whether we were right.
+     */
+    @JsonProperty("decisionId")
+    public String decisionId;
+
     public Map<String, Object> debug = new LinkedHashMap<>();
 }
